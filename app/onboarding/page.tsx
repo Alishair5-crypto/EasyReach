@@ -1,0 +1,2 @@
+import{redirect}from"next/navigation";import{getTenantContext}from"@/lib/auth";import OnboardingForm from"./onboarding-form";
+export default async function Onboarding(){const{user,tenant}=await getTenantContext();if(tenant)redirect("/dashboard");return <main className="auth-shell"><div className="auth-card wide-card"><div className="eyebrow">Step 1 · Business</div><h1>Tell EasyReach about your business.</h1><p className="muted">This creates your private workspace, starter AI agent and real connection hub.</p><OnboardingForm email={user.email??""}/></div></main>}

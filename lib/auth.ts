@@ -1,0 +1,4 @@
+import {redirect} from "next/navigation";import {createClient} from "./supabase/server";
+export async function getUser(){const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();return{supabase,user}}
+export async function requireUser(){const {supabase,user}=await getUser();if(!user)redirect("/signin");return{supabase,user}}
+export async function getTenantContext(){const {supabase,user}=await requireUser();const {data:membership}=await supabase.from("tenant_members").select("tenant_id,role").eq("user_id",user.id).order("created_at",{ascending:true}).limit(1).maybeSingle();if(!membership)return{supabase,user,membership:null,tenant:null};const {data:tenant}=await supabase.from("tenants").select("*").eq("id",membership.tenant_id).maybeSingle();return{supabase,user,membership,tenant}}
