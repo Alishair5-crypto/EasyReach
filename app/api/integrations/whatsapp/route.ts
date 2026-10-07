@@ -34,14 +34,14 @@ export async function POST(req: Request) {
     let externalId = ""; let displayName = "";
 
     if (provider === "whatsapp_meta") {
-      const accessToken = text(body.access_token, 10000), appSecret = text(body.app_secret, 1000);
+      const accessToken = text(body.access_token, 10000);
       const phoneNumberId = text(body.phone_number_id, 200), wabaId = text(body.waba_id, 200);
       let verifyToken = text(body.verify_token, 500);
       if (!accessToken || !phoneNumberId || !validId(phoneNumberId)) return NextResponse.json({ error: "meta_credentials_required" }, { status: 400 });
       const configuredAppSecret = process.env.META_APP_SECRET ?? "";
       const configuredVerifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN ?? "";
       if (!configuredAppSecret || !configuredVerifyToken) return NextResponse.json({ error: "meta_webhook_not_configured" }, { status: 503 });
-      const effectiveAppSecret = appSecret || configuredAppSecret;
+      const effectiveAppSecret = configuredAppSecret;
       verifyToken = configuredVerifyToken;
       Object.assign(secret, { access_token: accessToken, app_secret: effectiveAppSecret, phone_number_id: phoneNumberId, waba_id: wabaId || undefined, verify_token: verifyToken });
       externalId = phoneNumberId; displayName = text(body.display_name, 200) || "WhatsApp Cloud API";
@@ -84,7 +84,6 @@ export async function POST(req: Request) {
     return NextResponse.json({
       integrationId, provider, status: "preparing",
       verification: provider === "whatsapp_meta" ? { id: verification.id, display_phone_number: verification.display_phone_number, verified_name: verification.verified_name } : { provider_response: verification },
-      verifyToken: provider === "whatsapp_meta" ? secret.verify_token : undefined,
       webhookUrl: (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "") + "/api/webhooks/whatsapp"
     });
   } catch (e) {
