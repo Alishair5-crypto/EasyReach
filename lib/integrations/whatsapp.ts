@@ -8,7 +8,7 @@ function requiredString(secret: Record<string, unknown>, key: string) {
   return typeof secret[key] === "string" ? secret[key] : "";
 }
 
-async function readJson(response: Response) {
+async function readJson(response: Response): Promise<any> {
   return await response.json().catch(() => ({})) as Record<string, unknown>;
 }
 
