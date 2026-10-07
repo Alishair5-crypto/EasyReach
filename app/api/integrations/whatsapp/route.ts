@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
 import { getTenantContext } from "@/lib/auth";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
 import { createPrivilegedClient } from "@/lib/integrations/server";
@@ -38,9 +37,13 @@ export async function POST(req: Request) {
       const accessToken = text(body.access_token, 10000), appSecret = text(body.app_secret, 1000);
       const phoneNumberId = text(body.phone_number_id, 200), wabaId = text(body.waba_id, 200);
       let verifyToken = text(body.verify_token, 500);
-      if (!accessToken || !appSecret || !phoneNumberId || !validId(phoneNumberId)) return NextResponse.json({ error: "meta_credentials_required" }, { status: 400 });
-      if (!verifyToken) verifyToken = randomBytes(24).toString("base64url");
-      Object.assign(secret, { access_token: accessToken, app_secret: appSecret, phone_number_id: phoneNumberId, waba_id: wabaId || undefined, verify_token: verifyToken });
+      if (!accessToken || !phoneNumberId || !validId(phoneNumberId)) return NextResponse.json({ error: "meta_credentials_required" }, { status: 400 });
+      const configuredAppSecret = process.env.META_APP_SECRET ?? "";
+      const configuredVerifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN ?? "";
+      if (!configuredAppSecret || !configuredVerifyToken) return NextResponse.json({ error: "meta_webhook_not_configured" }, { status: 503 });
+      const effectiveAppSecret = appSecret || configuredAppSecret;
+      verifyToken = configuredVerifyToken;
+      Object.assign(secret, { access_token: accessToken, app_secret: effectiveAppSecret, phone_number_id: phoneNumberId, waba_id: wabaId || undefined, verify_token: verifyToken });
       externalId = phoneNumberId; displayName = text(body.display_name, 200) || "WhatsApp Cloud API";
     } else {
       const baseUrl = text(body.base_url, 2000).replace(/\/+$/, ""), apiKey = text(body.api_key, 5000), instanceName = text(body.instance_name, 200);
