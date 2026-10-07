@@ -1,17 +1,2 @@
-export type AIMessage = { role: "system" | "user" | "assistant"; content: string };
-export type AIResult = { text: string; model: string; provider: string; inputTokens?: number; outputTokens?: number };
-
-export async function generateAI(messages: AIMessage[]): Promise<AIResult> {
-  const key = process.env.AI_GATEWAY_API_KEY;
-  if (!key) throw new Error("AI_PROVIDER_NOT_CONFIGURED");
-  const model = process.env.EASYREACH_AI_MODEL || "openai/gpt-5.4-mini";
-  const response = await fetch("https://ai-gateway.vercel.sh/v1/chat/completions", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model, messages, temperature: 0.2 }),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error("AI_PROVIDER_ERROR");
-  const data = await response.json();
-  return { text: data.choices?.[0]?.message?.content ?? "", model, provider: "vercel-ai-gateway", inputTokens: data.usage?.prompt_tokens, outputTokens: data.usage?.completion_tokens };
-}
+export type AIMessage={role:"system"|"user"|"assistant";content:string};export type AIResult={text:string;model:string;provider:string;inputTokens?:number;outputTokens?:number};
+export async function generateAI(messages:AIMessage[]):Promise<AIResult>{const key=process.env.AI_GATEWAY_API_KEY;if(!key)throw new Error("AI_PROVIDER_NOT_CONFIGURED");if(!Array.isArray(messages)||messages.length===0||messages.length>100)throw new Error("AI_INVALID_MESSAGES");const model=process.env.EASYREACH_AI_MODEL||"openai/gpt-5.4-mini";const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),30000);try{const response=await fetch("https://ai-gateway.vercel.sh/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+key},body:JSON.stringify({model,messages,temperature:.2}),cache:"no-store",signal:controller.signal});if(!response.ok)throw new Error(response.status===429?"AI_PROVIDER_RATE_LIMIT":"AI_PROVIDER_ERROR");const data=await response.json();const text=typeof data?.choices?.[0]?.message?.content==="string"?data.choices[0].message.content.trim():"";if(!text||text.length>12000)throw new Error("AI_PROVIDER_EMPTY");return{text,model,provider:"vercel-ai-gateway",inputTokens:data.usage?.prompt_tokens,outputTokens:data.usage?.completion_tokens}}catch(e){if(e instanceof Error&&e.name==="AbortError")throw new Error("AI_PROVIDER_TIMEOUT");throw e}finally{clearTimeout(timer)}}
