@@ -82,7 +82,7 @@ export async function POST(req: Request) {
       integrationId, provider, status: "preparing",
       verification: provider === "whatsapp_meta" ? { id: verification.id, display_phone_number: verification.display_phone_number, verified_name: verification.verified_name } : { provider_response: verification },
       verifyToken: provider === "whatsapp_meta" ? secret.verify_token : undefined,
-      webhookUrl: ${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "")}/api/webhooks/whatsapp
+      webhookUrl: (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "") + "/api/webhooks/whatsapp"
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "whatsapp_integration_failed";
