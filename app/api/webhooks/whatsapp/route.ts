@@ -19,7 +19,7 @@ async function findIntegration(admin: ReturnType<typeof createPrivilegedClient>,
 async function processInbound(admin: ReturnType<typeof createPrivilegedClient>, integration: any, externalId: string, customerName: string | null, text: string | null, messageType: string, messageId: string, timestamp: string | null, metadata: Record<string, unknown>) {
   if (!externalId || !messageId) return;
   const tenantId = integration.tenant_id as string;
-  const customerKey = \`whatsapp:${externalId}\`;
+  const customerKey = `whatsapp:${externalId}`;
 
   const { data: identity } = await admin.from("customer_identities").select("customer_id").eq("tenant_id", tenantId).eq("channel", "whatsapp").eq("external_id", externalId).maybeSingle();
   let customerId = identity?.customer_id as string | undefined;
@@ -39,7 +39,7 @@ async function processInbound(admin: ReturnType<typeof createPrivilegedClient>, 
     await admin.from("customers").update({ name: customerName ?? undefined, phone: externalId, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("tenant_id", tenantId).eq("id", customerId);
   }
 
-  const conversationExternalId = \`${integration.kind}:${integration.provider_external_id}:${externalId}\`;
+  const conversationExternalId = `${integration.kind}:${integration.provider_external_id}:${externalId}`;
   const { data: conversation, error: conversationError } = await admin.from("conversations").upsert({
     tenant_id: tenantId, customer_id: customerId, channel: "whatsapp", external_id: conversationExternalId,
     status: "open", last_message_at: timestamp ? new Date(Number(timestamp) * 1000).toISOString() : new Date().toISOString()
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       if (!expected || supplied !== expected) return jsonResponse({ error: "invalid_signature" }, 403);
     }
 
-    const eventId = \`${provider}:${sha256(rawBody)}\`;
+    const eventId = `${provider}:${sha256(rawBody)}`;
     const { data: receipt, error: receiptError } = await admin.from("webhook_events").insert({
       tenant_id: integration.tenant_id, integration_id: integration.id, provider, external_event_id: eventId,
       event_type: provider === "whatsapp_meta" ? "whatsapp_business_account" : String(body.event ?? "unknown"),
