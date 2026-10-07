@@ -1,7 +1,7 @@
 "use client";
 import{useEffect,useState}from"react";
 
-type Customer={id:string;name:string|null;phone:string|null;email:string|null;preferred_language:string|null;tags:string[];notes:string|null;last_seen_at:string|null;identities:any[];conversations:any[];orders:any[];leads:any[];followups:any[]};
+type Customer={id:string;name:string|null;phone:string|null;email:string|null;preferred_language:string|null;tags:string[];notes:string|null;consent:Record<string,unknown>;last_seen_at:string|null;identities:any[];conversations:any[];orders:any[];leads:any[];followups:any[]};
 const label=(c:Customer)=>c.name||c.phone||c.email||"Unnamed customer";
 export default function CustomersPage(){
  const[customers,setCustomers]=useState<Customer[]>([]),[selected,setSelected]=useState<Customer|null>(null),[q,setQ]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState("");
