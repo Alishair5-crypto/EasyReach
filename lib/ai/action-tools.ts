@@ -193,3 +193,24 @@ export const SALES_TOOL_REGISTRY:Record<SalesToolName,{description:string;mutati
  handoff_to_human:{description:"Transfer a tenant conversation to a human.",mutating:true},
  schedule_followup:{description:"Schedule a tenant-scoped follow-up.",mutating:true}
 };
+
+
+export const AI_TOOL_DEFINITIONS:AIToolDefinition[]=[
+ {type:"function",function:{name:"search_products",description:"Search verified products in the current business catalog.",parameters:{type:"object",properties:{query:{type:"string",maxLength:1000}},required:["query"],additionalProperties:false}}},
+ {type:"function",function:{name:"get_product",description:"Read one verified product and its variants.",parameters:{type:"object",properties:{product_id:{type:"string"}},required:["product_id"],additionalProperties:false}}},
+ {type:"function",function:{name:"check_inventory",description:"Read live inventory for one product or variant.",parameters:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"}},additionalProperties:false}}},
+ {type:"function",function:{name:"get_price",description:"Read live price for one product or variant.",parameters:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"}},additionalProperties:false}}},
+ {type:"function",function:{name:"get_variant",description:"Read one verified product variant.",parameters:{type:"object",properties:{variant_id:{type:"string"}},required:["variant_id"],additionalProperties:false}}},
+ {type:"function",function:{name:"search_knowledge",description:"Search ready business knowledge for the current tenant.",parameters:{type:"object",properties:{query:{type:"string",maxLength:1000}},required:["query"],additionalProperties:false}}},
+ {type:"function",function:{name:"get_business_policy",description:"Read verified business policies.",parameters:{type:"object",properties:{},additionalProperties:false}}},
+ {type:"function",function:{name:"create_lead",description:"Create a qualified sales lead for the current customer when sales intent is clear.",parameters:{type:"object",properties:{customer_id:{type:"string"},status:{type:"string",enum:["new","qualified","won","lost"]},source_channel:{type:"string"},budget:{type:"number"},intent:{type:"string",maxLength:500},notes:{type:"string",maxLength:2000}},additionalProperties:false}}},
+ {type:"function",function:{name:"create_order",description:"Create an order only after the customer has explicitly confirmed the final items and quantities. Backend confirmation controls still apply.",parameters:{type:"object",properties:{customer_id:{type:"string"},source_channel:{type:"string"},currency:{type:"string"},items:{type:"array",minItems:1,maxItems:50,items:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"},quantity:{type:"integer",minimum:1}},additionalProperties:false}}},required:["items"],additionalProperties:false}}},
+ {type:"function",function:{name:"get_order",description:"Read one verified order.",parameters:{type:"object",properties:{order_id:{type:"string"}},required:["order_id"],additionalProperties:false}}},
+ {type:"function",function:{name:"get_customer",description:"Read Customer 360 data for the current tenant.",parameters:{type:"object",properties:{customer_id:{type:"string"}},additionalProperties:false}}},
+ {type:"function",function:{name:"send_product",description:"Send a product through a configured outbound channel; never claim success unless the adapter confirms it.",parameters:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"},conversation_id:{type:"string"}},additionalProperties:false}}},
+ {type:"function",function:{name:"send_checkout",description:"Send a checkout action through a configured outbound channel; never claim success unless the adapter confirms it.",parameters:{type:"object",properties:{order_id:{type:"string"},conversation_id:{type:"string"}},required:["order_id"],additionalProperties:false}}},
+ {type:"function",function:{name:"handoff_to_human",description:"Transfer the current conversation to a human when needed.",parameters:{type:"object",properties:{conversation_id:{type:"string"},reason:{type:"string",maxLength:1000}},additionalProperties:false}}},
+ {type:"function",function:{name:"schedule_followup",description:"Schedule a future follow-up only when the customer has requested or clearly consented to follow-up.",parameters:{type:"object",properties:{customer_id:{type:"string"},conversation_id:{type:"string"},channel:{type:"string"},message:{type:"string",maxLength:4000},scheduled_for:{type:"string"}},required:["message","scheduled_for","channel"],additionalProperties:false}}}
+];
+
+export type AIToolDefinition={type:"function";function:{name:string;description:string;parameters:Record<string,unknown>}};
