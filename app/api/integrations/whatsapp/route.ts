@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
-import { getEntitlements, requirePlanActive } from "@/lib/entitlements";
+import { requirePlanActive } from "@/lib/entitlements";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
 import { createPrivilegedClient } from "@/lib/integrations/server";
 import { configureEvolutionWebhook, getEvolutionStatus, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
