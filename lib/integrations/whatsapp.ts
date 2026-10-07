@@ -43,7 +43,7 @@ export async function getEvolutionStatus(secret: Record<string, unknown>) {
   return await readJson(response);
 }
 
-async function configureEvolutionWebhook(secret: Record<string, unknown>) {
+export async function configureEvolutionWebhook(secret: Record<string, unknown>) {
   const baseUrl = stripTrailingSlashes(requiredString(secret, "base_url"));
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
