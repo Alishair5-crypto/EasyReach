@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
+import { getEntitlements, requirePlanActive } from "@/lib/entitlements";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
 import { createPrivilegedClient } from "@/lib/integrations/server";
 import { configureEvolutionWebhook, getEvolutionStatus, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
@@ -26,13 +27,35 @@ export async function POST(req: Request) {
     const provider = body?.provider === "whatsapp_meta" || body?.provider === "whatsapp_evolution" ? body.provider : null;
     if (!provider) return NextResponse.json({ error: "provider_required" }, { status: 400 });
 
+    const ent = await requirePlanActive(tenant.id, supabase);
+    const whatsappLimit = Math.max(0, Number(ent.limits.whatsapp_numbers ?? 0));
+    if (!ent.features.whatsapp) return NextResponse.json({ error: "feature_not_entitled" }, { status: 403 });
+    if (provider === "whatsapp_meta" && !ent.features.meta_cloud_api && !ent.features.meta_cloud_api_optional) {
+      return NextResponse.json({ error: "meta_cloud_api_not_entitled" }, { status: 403 });
+    }
+    const { count: whatsappCount, error: whatsappCountError } = await supabase
+      .from("integrations")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .in("kind", ["whatsapp_meta", "whatsapp_evolution"]);
+    if (whatsappCountError) throw whatsappCountError;
+
     const externalCandidate = provider === "whatsapp_evolution" ? text(body.instance_name, 200) : text(body.phone_number_id, 200);
     const duplicate = await supabase.from("integrations").select("id,tenant_id").eq("kind", provider).eq("provider_external_id", externalCandidate).maybeSingle();
     if (duplicate.error) throw duplicate.error;
     if (duplicate.data && duplicate.data.tenant_id !== tenant.id) return NextResponse.json({ error: "whatsapp_number_already_connected" }, { status: 409 });
 
-    const existing = await supabase.from("integrations").select("id").eq("tenant_id", tenant.id).eq("kind", provider).maybeSingle();
+    const existing = await supabase
+      .from("integrations")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("kind", provider)
+      .eq("provider_external_id", externalCandidate)
+      .maybeSingle();
     if (existing.error) throw existing.error;
+    if (!existing.data && (whatsappCount ?? 0) >= whatsappLimit) {
+      return NextResponse.json({ error: "whatsapp_number_limit_reached", limit: whatsappLimit }, { status: 409 });
+    }
 
     let integrationId = existing.data?.id as string | undefined;
     const secret: Record<string, unknown> = {};
