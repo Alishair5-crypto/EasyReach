@@ -1,5 +1,7 @@
 import{createClient}from"@/lib/supabase/server";import{generateAI}from"./provider";import{getBusinessPolicy,getProductVariants,searchProducts}from"./tools";import{consumeUsage}from"@/lib/entitlements";
 export async function runSalesAgent(input:{tenantId:string;agentId?:string;conversationId?:string;customerId?:string;message:string;userId:string}){const s=await createClient();const{tenantId,message}=input;
+if(input.agentId){const{data:agent}=await s.from("agents").select("id,status").eq("tenant_id",tenantId).eq("id",input.agentId).maybeSingle();if(!agent)throw new Error("agent_not_found");if(agent.status!=="active")throw new Error("agent_not_active")}
+if(input.customerId){const{data:customer}=await s.from("customers").select("id").eq("tenant_id",tenantId).eq("id",input.customerId).maybeSingle();if(!customer)throw new Error("customer_not_found")}
 let conversationId=input.conversationId;
 if(conversationId){const{data}=await s.from("conversations").select("id,customer_id,status,handoff").eq("tenant_id",tenantId).eq("id",conversationId).maybeSingle();if(!data)throw new Error("conversation_not_found");if(data.handoff)throw new Error("human_handoff_active")}
 if(!conversationId){const{data,error}=await s.from("conversations").insert({tenant_id:tenantId,customer_id:input.customerId??null,channel:"dashboard",status:"open",priority:"normal",handoff:false,last_message_at:new Date().toISOString()}).select("id").single();if(error||!data)throw new Error("conversation_create_failed");conversationId=data.id}
@@ -13,7 +15,8 @@ VERIFIED_PRODUCTS=${JSON.stringify(products)}
 VERIFIED_VARIANTS=${JSON.stringify(variants)}
 VERIFIED_POLICIES=${JSON.stringify(policies)}`;
 const msgs=[{role:"system" as const,content:system},...history.reverse().map((m:any)=>({role:m.direction==="inbound"?"user" as const:"assistant" as const,content:String(m.content).slice(0,4000)}))];
-const started=Date.now();const ai=await generateAI(msgs);const{error:outboundError}=await s.from("messages").insert({tenant_id:tenantId,conversation_id:conversationId,direction:"outbound",sender_type:"ai",content:ai.text,media:null,tool_trace:{verified_product_ids:products.map((p:any)=>p.id),model:ai.model}});if(outboundError)throw new Error("message_create_failed");
+const started=Date.now();const ai=await generateAI(msgs);if(!ai.text||!ai.text.trim())throw new Error("AI_PROVIDER_EMPTY_RESPONSE");
+const{error:outboundError}=await s.from("messages").insert({tenant_id:tenantId,conversation_id:conversationId,direction:"outbound",sender_type:"ai",content:ai.text,media:null,tool_trace:{verified_product_ids:products.map((p:any)=>p.id),model:ai.model}});if(outboundError)throw new Error("message_create_failed");
 await s.from("conversations").update({last_message_at:new Date().toISOString()}).eq("tenant_id",tenantId).eq("id",conversationId);
 await s.from("ai_usage_events").insert({tenant_id:tenantId,agent_id:input.agentId??null,conversation_id:conversationId,provider:ai.provider,model:ai.model,input_tokens:ai.inputTokens??null,output_tokens:ai.outputTokens??null,latency_ms:Date.now()-started,status:"success"});
 return{conversationId,text:ai.text,verifiedProductCount:products.length}
