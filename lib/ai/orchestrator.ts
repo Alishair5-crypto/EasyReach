@@ -1,6 +1,7 @@
 import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{generateAI,AIMessage}from"./provider";import{getBusinessPolicy,searchProducts,getProductVariants}from"./tools";import{consumeUsage}from"@/lib/entitlements";import{AI_TOOL_DEFINITIONS,executeSalesTool,SalesToolName}from"./action-tools";
 
-const READ_ONLY_TOOLS=new Set<SalesToolName>(["search_products","get_product","check_inventory","get_price","get_variant","search_knowledge","get_business_policy","get_customer","get_order"]);\nconst AUTONOMOUS_TOOLS=new Set<SalesToolName>(["search_products","get_product","check_inventory","get_price","get_variant","search_knowledge","get_business_policy","get_customer","get_order","create_lead","handoff_to_human"]);
+const READ_ONLY_TOOLS=new Set<SalesToolName>(["search_products","get_product","check_inventory","get_price","get_variant","search_knowledge","get_business_policy","get_customer","get_order"]);
+const AUTONOMOUS_TOOLS=new Set<SalesToolName>(["search_products","get_product","check_inventory","get_price","get_variant","search_knowledge","get_business_policy","get_customer","get_order","create_lead","handoff_to_human"]);
 
 type SalesDb=SupabaseClient;
 export async function runSalesAgent(input:{tenantId:string;agentId?:string;conversationId?:string;customerId?:string;message:string;userId:string},options:{db?:SalesDb;persistInbound?:boolean;allowTesting?:boolean}={}){
