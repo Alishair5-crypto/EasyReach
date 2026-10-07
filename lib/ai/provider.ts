@@ -1,4 +1,4 @@
-export type AIMessage={role:"system"|"user"|"assistant"|"tool";content:string|undefined;tool_call_id?:string};
+export type AIMessage={role:"system"|"user"|"assistant"|"tool";content:string|undefined;tool_call_id?:string;tool_calls?:AIToolCall[]};
 export type AIToolCall={id:string;name:string;arguments:string};
 export type AITool={type:"function";function:{name:string;description:string;parameters:Record<string,unknown>}};
 export type AIResult={text:string;model:string;provider:string;inputTokens?:number;outputTokens?:number;toolCalls?:AIToolCall[];finishReason?:string};
