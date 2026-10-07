@@ -28,7 +28,7 @@ export async function GET(req:Request){
     const memberMap=new Map((members??[]).map(x=>[x.user_id,x]));
     const lastBy=new Map<string,any>(); for(const m of messages??[])if(!lastBy.has(m.conversation_id))lastBy.set(m.conversation_id,m);
     const unread=new Map<string,number>(); for(const m of messages??[])if(m.direction==="inbound"&&!m.read_at)unread.set(m.conversation_id,(unread.get(m.conversation_id)??0)+1);
-    const result=rows.map(c=>({...c,customer:c.customer_id?customerMap.get(c.customer_id)??null:null,assignee:c.assigned_to?profileMap.get(c.assigned_to)??null:null,lastMessage:lastBy.get(c.id)??null,unreadCount:unread.get(c.id)??0}));
+    const result=rows.map(c=>({...c,customer:c.customer_id?customerMap.get(c.customer_id)??null:null,assignee:c.assigned_to?memberMap.get(c.assigned_to)??null:null,lastMessage:lastBy.get(c.id)??null,unreadCount:unread.get(c.id)??0}));
     if(q){const qq=q.toLowerCase();return NextResponse.json({conversations:result.filter(x=>[x.customer?.name,x.customer?.phone,x.customer?.email,x.channel,x.external_id].some(v=>String(v??"").toLowerCase().includes(qq)))});}
     return NextResponse.json({conversations:result,members:members??[]});
   }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"conversation_list_failed"},{status:500});}
