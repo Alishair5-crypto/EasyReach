@@ -79,7 +79,8 @@ export async function POST(req: Request) {
       verification = await verifyMetaCredentials(secret);
       if (secret.waba_id) await subscribeMetaWaba(secret);
     } else {
-      verification = await getEvolutionStatus(secret);\n      await configureEvolutionWebhook(secret);
+      verification = await getEvolutionStatus(secret);
+      await configureEvolutionWebhook(secret);
     }
 
     const evolutionConnected = provider === "whatsapp_evolution" && String((verification as any)?.instance?.state ?? (verification as any)?.state ?? "").toLowerCase() === "open";
