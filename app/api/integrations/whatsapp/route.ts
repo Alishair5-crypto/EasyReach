@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
 import { createPrivilegedClient } from "@/lib/integrations/server";
-import { getEvolutionStatus, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
+import { configureEvolutionWebhook, getEvolutionStatus, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
 
 function text(value: unknown, max = 5000) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 function validId(value: string) { return /^[0-9A-Za-z_-]{2,200}$/.test(value); }
@@ -25,6 +25,11 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const provider = body?.provider === "whatsapp_meta" || body?.provider === "whatsapp_evolution" ? body.provider : null;
     if (!provider) return NextResponse.json({ error: "provider_required" }, { status: 400 });
+
+    const externalCandidate = provider === "whatsapp_evolution" ? text(body.instance_name, 200) : text(body.phone_number_id, 200);
+    const duplicate = await supabase.from("integrations").select("id,tenant_id").eq("kind", provider).eq("provider_external_id", externalCandidate).maybeSingle();
+    if (duplicate.error) throw duplicate.error;
+    if (duplicate.data && duplicate.data.tenant_id !== tenant.id) return NextResponse.json({ error: "whatsapp_number_already_connected" }, { status: 409 });
 
     const existing = await supabase.from("integrations").select("id").eq("tenant_id", tenant.id).eq("kind", provider).maybeSingle();
     if (existing.error) throw existing.error;
@@ -74,15 +79,17 @@ export async function POST(req: Request) {
       verification = await verifyMetaCredentials(secret);
       if (secret.waba_id) await subscribeMetaWaba(secret);
     } else {
-      verification = await getEvolutionStatus(secret);
+      verification = await getEvolutionStatus(secret);\n      await configureEvolutionWebhook(secret);
     }
 
-    const { error: statusError } = await supabase.from("integrations").update({ status: "preparing", last_sync_at: new Date().toISOString(), error_message: null, updated_at: new Date().toISOString() }).eq("id", integrationId).eq("tenant_id", tenant.id);
+    const evolutionConnected = provider === "whatsapp_evolution" && String((verification as any)?.instance?.state ?? (verification as any)?.state ?? "").toLowerCase() === "open";
+    const finalStatus = provider === "whatsapp_meta" ? "preparing" : (evolutionConnected ? "connected" : "preparing");
+    const { error: statusError } = await supabase.from("integrations").update({ status: finalStatus, last_sync_at: new Date().toISOString(), error_message: null, updated_at: new Date().toISOString() }).eq("id", integrationId).eq("tenant_id", tenant.id);
     if (statusError) throw statusError;
     await supabase.from("audit_logs").insert({ tenant_id: tenant.id, actor_id: user.id, action: "integration.whatsapp.configured", resource_type: "integration", resource_id: integrationId, new_data: { provider, provider_external_id: externalId } });
 
     return NextResponse.json({
-      integrationId, provider, status: "preparing",
+      integrationId, provider, status: finalStatus,
       verification: provider === "whatsapp_meta" ? { id: verification.id, display_phone_number: verification.display_phone_number, verified_name: verification.verified_name } : { provider_response: verification },
       webhookUrl: (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "") + "/api/webhooks/whatsapp"
     });
