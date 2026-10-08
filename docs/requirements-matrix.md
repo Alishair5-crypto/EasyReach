@@ -1,27 +1,27 @@
 # EasyReach V11.1 Requirement Matrix
-Status: NOT STARTED / IN PROGRESS / IMPLEMENTED / TESTED / VERIFIED / SIGNED OFF.
+Status: NOT STARTED / IN PROGRESS / PARTIAL / IMPLEMENTED / TESTED / VERIFIED / UNVERIFIED / SIGNED OFF.
 
 | Area | Requirement | Status | Evidence / gate |
 |---|---|---|---|
 | Foundation | Next.js App Router + Supabase SSR | TESTED | Production build path |
 | Auth | Sign up / sign in / callback | IMPLEMENTED | Auth routes |
 | Tenant | Private business workspace bootstrap | IMPLEMENTED | bootstrap_tenant |
-| Isolation | Session-derived tenant + RLS | IN PROGRESS | Security advisor 0 findings; multi-tenant E2E pending |
-| Plans | Trial/Silver/Gold/Diamond + server enforcement | IN PROGRESS | plans/subscriptions schema; enforcement pending |
-| Catalog | Products + variants + verified search | IN PROGRESS | tenant-scoped search, budget extraction, variant retrieval |
+| Isolation | Session-derived tenant + RLS | PARTIAL / UNVERIFIED | Hardened RLS migration exists; adversarial multi-tenant E2E still required |
+| Plans | Trial/Silver/Gold/Diamond + server enforcement | PARTIAL | Central entitlement/usage enforcement exists; billing/payment lifecycle remains incomplete |
+| Catalog | Products + variants + verified search | PARTIAL | Tenant-safe products/variants APIs and AI read tools exist; commerce sync and full verification remain |
 | Inbox | Conversations + messages + handoff state | IN PROGRESS | persisted AI conversation flow |
 | Orders | Orders + items + idempotency | IN PROGRESS | tenant/channel/external unique constraint |
-| Integrations | Central connection hub | IN PROGRESS | real DB status; provider adapters pending |
-| AI | Master + specialist orchestration | IN PROGRESS | Master sales orchestration + verified context; specialists pending |
+| Integrations | Central connection hub | PARTIAL | Integration lifecycle foundation and WhatsApp provider adapters exist; live provider E2E remains |
+| AI | Master + specialist orchestration | PARTIAL | Master orchestrator, governed tools and readiness flow exist; bounded specialist contract/coverage remains |
 | Website | Secure crawler + widget | NOT STARTED | SSRF/crawler/widget pending |
-| WhatsApp | Meta + Evolution adapters | NOT STARTED | real credentials/webhooks pending |
+| WhatsApp | Meta + Evolution adapters | PARTIAL / UNVERIFIED | Meta/Evolution foundation, webhook handling and outbound adapters exist; real provider E2E/sign-off pending |
 | Ecommerce | Shopify + WooCommerce | NOT STARTED | provider adapters pending |
 | Sheets | Google Sheets OAuth/sync | NOT STARTED | OAuth/mapping/sync pending |
 | Analytics | Sales intelligence | NOT STARTED | event aggregation pending |
 | Follow-ups | Scheduled follow-up engine | IN PROGRESS | followups schema exists; worker pending |
 | Admin | Tenant/platform administration | NOT STARTED | pending |
 | QA | Browser, security and E2E suites | IN PROGRESS | schema/security audit started |
-| Production | Build + deployment + runtime verification | IN PROGRESS | Vercel deployment gate pending |
+| Production | Build + deployment + runtime verification | IN PROGRESS | Deployment/build foundation exists; runtime, security and real-provider verification gates remain |
 
 ## Non-negotiable engineering rules
 1. NO DATA = NO CLAIM.
