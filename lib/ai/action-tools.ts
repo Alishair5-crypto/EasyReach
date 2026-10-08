@@ -1,4 +1,4 @@
-import{createClient}from"@/lib/supabase/server";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";
+import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";
 
 export type SalesToolName=
 |"search_products"|"get_product"|"check_inventory"|"get_price"|"get_variant"
