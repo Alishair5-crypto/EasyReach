@@ -1,4 +1,4 @@
-import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";
+import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";import{consumeUsage,requireFeature}from"@/lib/entitlements";
 
 export type SalesToolName=
 |"search_products"|"get_product"|"check_inventory"|"get_price"|"get_variant"
@@ -108,7 +108,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    return{ok:true,tool:name,data:{customer:c,identities:identities??[],orders:orders??[],leads:leads??[],followups:followups??[]}};
   }
 
-  if(name==="create_lead"){
+  if(name==="create_lead"){\n   await requireFeature(ctx.tenantId,"core_ai",s);
    const customerId=a.customer_id??ctx.customerId;
    if(!id(customerId))return fail(name,"customer_required","A valid customer_id is required.");
    if(!await customer(s,ctx.tenantId,customerId as string))return fail(name,"customer_not_found","Customer was not found.");
@@ -120,7 +120,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    return{ok:true,tool:name,data};
   }
 
-  if(name==="create_order"){
+  if(name==="create_order"){\n   await requireFeature(ctx.tenantId,"orders",s);
    const customerId=a.customer_id??ctx.customerId;if(!id(customerId))return fail(name,"customer_required","A valid customer_id is required.");
    if(!await customer(s,ctx.tenantId,customerId as string))return fail(name,"customer_not_found","Customer was not found.");
    if(!Array.isArray(a.items)||!a.items.length||a.items.length>50)return fail(name,"invalid_items","1 to 50 items are required.");
@@ -142,7 +142,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    return{ok:true,tool:name,data};
   }
 
-  if(name==="handoff_to_human"){
+  if(name==="handoff_to_human"){\n   await requireFeature(ctx.tenantId,"handoff",s);
    const conversationId=a.conversation_id??ctx.conversationId;
    if(!id(conversationId))return fail(name,"conversation_required","A valid conversation_id is required.");
    const{data:conversation,error}=await s.from("conversations").select("id,customer_id,handoff,status,assigned_to").eq("tenant_id",ctx.tenantId).eq("id",conversationId).maybeSingle();
@@ -160,7 +160,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    const channel=text(a.channel,50);if(!["whatsapp","website","instagram","facebook","email"].includes(channel))return fail(name,"invalid_channel","Unsupported follow-up channel.");
    const message=text(a.message,4000);if(!message)return fail(name,"message_required","Follow-up message is required.");
    const when=text(a.scheduled_for,100);const dt=new Date(when);if(!when||Number.isNaN(dt.getTime())||dt.getTime()<=Date.now())return fail(name,"invalid_schedule","scheduled_for must be a valid future timestamp.");
-   const payload={tenant_id:ctx.tenantId,customer_id:customerId,conversation_id:id(a.conversation_id)?a.conversation_id:null,channel,message,scheduled_for:dt.toISOString(),status:"scheduled",attempts:0,last_error:null};
+   await consumeUsage(ctx.tenantId,"followups",1,s);\n   const payload={tenant_id:ctx.tenantId,customer_id:customerId,conversation_id:id(a.conversation_id)?a.conversation_id:null,channel,message,scheduled_for:dt.toISOString(),status:"scheduled",attempts:0,last_error:null};
    const{data,error}=await s.from("followups").insert(payload).select("id,customer_id,conversation_id,channel,message,scheduled_for,status,created_at,updated_at").single();
    if(error)throw error;
    return{ok:true,tool:name,data};
