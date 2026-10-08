@@ -1,0 +1,1 @@
+-- Allow multiple integrations of the same kind per tenant, subject to provider identity and plan limits.\nalter table public.integrations drop constraint if exists integrations_tenant_id_kind_key;\n
