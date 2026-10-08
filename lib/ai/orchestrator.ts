@@ -1,11 +1,11 @@
-import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{generateAI,AIMessage}from"./provider";import{getBusinessPolicy,searchProducts,getProductVariants}from"./tools";import{consumeUsage}from"@/lib/entitlements";import{AI_TOOL_DEFINITIONS,executeSalesTool,SalesToolName}from"./action-tools";
+import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{generateAI,AIMessage}from"./provider";import{getBusinessPolicy,searchProducts,getProductVariants}from"./tools";import{consumeUsage,requireFeature}from"@/lib/entitlements";import{AI_TOOL_DEFINITIONS,executeSalesTool,SalesToolName}from"./action-tools";
 
 const READ_ONLY_TOOLS=new Set<SalesToolName>(["search_products","get_product","check_inventory","get_price","get_variant","search_knowledge","get_business_policy","get_customer","get_order"]);
 const AUTONOMOUS_TOOLS=new Set<SalesToolName>(["search_products","get_product","check_inventory","get_price","get_variant","search_knowledge","get_business_policy","get_customer","get_order","create_lead","handoff_to_human"]);
 
 type SalesDb=SupabaseClient;
 export async function runSalesAgent(input:{tenantId:string;agentId?:string;conversationId?:string;customerId?:string;message:string;userId:string},options:{db?:SalesDb;persistInbound?:boolean;allowTesting?:boolean}={}){
- const s=options.db??await createClient();const{tenantId,message}=input;const testing=options.allowTesting===true&&options.persistInbound===false;
+ const s=options.db??await createClient();const{tenantId,message}=input;await requireFeature(tenantId,"core_ai",s);const testing=options.allowTesting===true&&options.persistInbound===false;
  if(input.agentId){const{data:agent}=await s.from("agents").select("id,status").eq("tenant_id",tenantId).eq("id",input.agentId).maybeSingle();if(!agent)throw new Error("agent_not_found");if(agent.status!=="active"&&!(options.allowTesting&&agent.status==="testing"))throw new Error("agent_not_active")}
  if(input.conversationId&&input.customerId){const{data:existing}=await s.from("conversations").select("customer_id").eq("tenant_id",tenantId).eq("id",input.conversationId).maybeSingle();if(existing&&existing.customer_id!==input.customerId)throw new Error("conversation_customer_mismatch")}
  if(input.customerId){const{data:customer}=await s.from("customers").select("id").eq("tenant_id",tenantId).eq("id",input.customerId).maybeSingle();if(!customer)throw new Error("customer_not_found")}
