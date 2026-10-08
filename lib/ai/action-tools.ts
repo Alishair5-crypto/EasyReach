@@ -1,4 +1,4 @@
-import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";import{consumeUsage,requireFeature}from"@/lib/entitlements";
+import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";import{requireFeature}from"@/lib/entitlements";
 
 export type SalesToolName=
 |"search_products"|"get_product"|"check_inventory"|"get_price"|"get_variant"
@@ -160,7 +160,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    const channel=text(a.channel,50);if(!["whatsapp","website","instagram","facebook","email"].includes(channel))return fail(name,"invalid_channel","Unsupported follow-up channel.");
    const message=text(a.message,4000);if(!message)return fail(name,"message_required","Follow-up message is required.");
    const when=text(a.scheduled_for,100);const dt=new Date(when);if(!when||Number.isNaN(dt.getTime())||dt.getTime()<=Date.now())return fail(name,"invalid_schedule","scheduled_for must be a valid future timestamp.");
-   await consumeUsage(ctx.tenantId,"followups",1,s);\n   const payload={tenant_id:ctx.tenantId,customer_id:customerId,conversation_id:id(a.conversation_id)?a.conversation_id:null,channel,message,scheduled_for:dt.toISOString(),status:"scheduled",attempts:0,last_error:null};
+   const payload={tenant_id:ctx.tenantId,customer_id:customerId,conversation_id:id(a.conversation_id)?a.conversation_id:null,channel,message,scheduled_for:dt.toISOString(),status:"scheduled",attempts:0,last_error:null};
    const{data,error}=await s.from("followups").insert(payload).select("id,customer_id,conversation_id,channel,message,scheduled_for,status,created_at,updated_at").single();
    if(error)throw error;
    return{ok:true,tool:name,data};
