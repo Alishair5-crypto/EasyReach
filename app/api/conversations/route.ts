@@ -20,7 +20,7 @@ export async function GET(req:Request){
     const {data:conversations,error}=await query;if(error)throw error;
     const rows=conversations??[], customerIds=rows.map(x=>x.customer_id).filter(Boolean) as string[], ids=rows.map(x=>x.id);
     const [customerResult,memberResult,messageResult]=await Promise.all([
-      customerIds.length?supabase.from("customers").select("id,name,phone,email,preferred_language,tags").eq("tenant_id",tenant.id).in("id",customerIds):Promise.resolve({data:[]}),
+      customerIds.length?supabase.from("customers").select("id,name,phone,email,preferred_language,tags").eq("tenant_id",tenant.id).in("id",customerIds):Promise.resolve({data:[],error:null}),
       supabase.from("tenant_members").select("user_id,role").eq("tenant_id",tenant.id),
       ids.length?supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at").eq("tenant_id",tenant.id).in("conversation_id",ids).order("created_at",{ascending:false}):Promise.resolve({data:[]})
     ]);
