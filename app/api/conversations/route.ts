@@ -22,7 +22,7 @@ export async function GET(req:Request){
     const [customerResult,memberResult,messageResult]=await Promise.all([
       customerIds.length?supabase.from("customers").select("id,name,phone,email,preferred_language,tags").eq("tenant_id",tenant.id).in("id",customerIds):Promise.resolve({data:[],error:null}),
       supabase.from("tenant_members").select("user_id,role").eq("tenant_id",tenant.id),
-      ids.length?supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at").eq("tenant_id",tenant.id).in("conversation_id",ids).order("created_at",{ascending:false}):Promise.resolve({data:[]})
+      ids.length?supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at").eq("tenant_id",tenant.id).in("conversation_id",ids).order("created_at",{ascending:false}):Promise.resolve({data:[] as any[],error:null})
     ]);
     if(customerResult.error||memberResult.error||messageResult.error)throw new Error("conversation_related_query_failed");
     const customers=customerResult.data??[],members=memberResult.data??[],messages=messageResult.data??[];
