@@ -130,10 +130,10 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    if(items.some((x:any)=>!id(x.product_id)&&!id(x.variant_id)))return fail(name,"invalid_items","Each item needs a valid product_id or variant_id.");
    if(items.some((x:any)=>id(x.product_id)&&id(x.variant_id)))return fail(name,"invalid_items","Each item must use either product_id or variant_id, not both.");
    if(items.some((x:any)=>!Number.isInteger(Number(x.quantity))||Number(x.quantity)<=0||Number(x.quantity)>1000))return fail(name,"invalid_quantity","Invalid quantity.");
-   const confirmationTokenHash=text(a.confirmation_token_hash,128);
+   const confirmationTokenHash=text(a.confirmation_token_hash,128);\n   if(confirmationTokenHash && !/^[0-9a-f]{64}$/i.test(confirmationTokenHash))return fail(name,"invalid_confirmation_token","A valid server-issued confirmation token hash is required.");
    if(!confirmationTokenHash)return fail(name,"confirmation_required","An explicit server-issued order confirmation is required.");
    const{data,error}=await s.rpc("execute_confirmed_order_atomic",{p_tenant_id:ctx.tenantId,p_token_hash:confirmationTokenHash});
-   if(error)return fail(name,"order_confirmation_failed",error.message.includes("already_used")?"The confirmation has already been used.":error.message.includes("expired")?"The confirmation has expired.":error.message.includes("required")?"Explicit confirmation is required.":"The confirmed order could not be created safely.");
+   if(error)return fail(name,"order_confirmation_failed",error.message.includes("already_used")?"The confirmation has already been used.":error.message.includes("expired")?"The confirmation has expired.":error.message.includes("required")?"Explicit confirmation is required.":error.message.includes("integrity_failure")?"The confirmation integrity check failed.":"The confirmed order could not be created safely.");
    if(!data?.order_id)return fail(name,"order_read_failed","The order action completed without a verified order result.");
    const{data:order}=await s.from("orders").select("id,status,total,currency,payment_status,source_channel,created_at,updated_at").eq("tenant_id",ctx.tenantId).eq("id",data.order_id).maybeSingle();
    if(!order)return fail(name,"order_read_failed","Order action completed but the order could not be verified.");
@@ -167,7 +167,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    const message=text(a.message,4000);if(!message)return fail(name,"message_required","Follow-up message is required.");
    const when=text(a.scheduled_for,100);const dt=new Date(when);if(!when||Number.isNaN(dt.getTime())||dt.getTime()<=Date.now())return fail(name,"invalid_schedule","scheduled_for must be a valid future timestamp.");
    const{data,error}=await s.rpc("schedule_followup_atomic",{p_tenant_id:ctx.tenantId,p_customer_id:customerId,p_conversation_id:id(a.conversation_id)?a.conversation_id:null,p_channel:channel,p_message:message,p_scheduled_for:dt.toISOString()});
-   if(error)return fail(name,"followup_creation_failed",error.message.includes("usage_limit_exceeded")?"The follow-up limit has been reached.":"The follow-up could not be scheduled safely.");
+   if(error)return fail(name,"followup_creation_failed",error.message.includes("usage_limit_exceeded")?"The follow-up limit has been reached.":error.message.includes("conversation_not_found")?"The conversation does not belong to this customer.":"The follow-up could not be scheduled safely.");
    if(!data?.followup_id)return fail(name,"followup_creation_failed","The follow-up was not verified after scheduling.");
    const{data:followup}=await s.from("followups").select("id,customer_id,conversation_id,channel,message,scheduled_for,status,created_at,updated_at").eq("tenant_id",ctx.tenantId).eq("id",data.followup_id).maybeSingle();
    if(!followup)return fail(name,"followup_read_failed","Follow-up was scheduled but could not be verified.");
