@@ -108,7 +108,8 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    return{ok:true,tool:name,data:{customer:c,identities:identities??[],orders:orders??[],leads:leads??[],followups:followups??[]}};
   }
 
-  if(name==="create_lead"){\n   await requireFeature(ctx.tenantId,"core_ai",s);
+  if(name==="create_lead"){
+   await requireFeature(ctx.tenantId,"core_ai",s);
    const customerId=a.customer_id??ctx.customerId;
    if(!id(customerId))return fail(name,"customer_required","A valid customer_id is required.");
    if(!await customer(s,ctx.tenantId,customerId as string))return fail(name,"customer_not_found","Customer was not found.");
@@ -120,7 +121,8 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    return{ok:true,tool:name,data};
   }
 
-  if(name==="create_order"){\n   await requireFeature(ctx.tenantId,"orders",s);
+  if(name==="create_order"){
+   await requireFeature(ctx.tenantId,"orders",s);
    const customerId=a.customer_id??ctx.customerId;if(!id(customerId))return fail(name,"customer_required","A valid customer_id is required.");
    if(!await customer(s,ctx.tenantId,customerId as string))return fail(name,"customer_not_found","Customer was not found.");
    if(!Array.isArray(a.items)||!a.items.length||a.items.length>50)return fail(name,"invalid_items","1 to 50 items are required.");
@@ -142,7 +144,8 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    return{ok:true,tool:name,data};
   }
 
-  if(name==="handoff_to_human"){\n   await requireFeature(ctx.tenantId,"handoff",s);
+  if(name==="handoff_to_human"){
+   await requireFeature(ctx.tenantId,"handoff",s);
    const conversationId=a.conversation_id??ctx.conversationId;
    if(!id(conversationId))return fail(name,"conversation_required","A valid conversation_id is required.");
    const{data:conversation,error}=await s.from("conversations").select("id,customer_id,handoff,status,assigned_to").eq("tenant_id",ctx.tenantId).eq("id",conversationId).maybeSingle();
