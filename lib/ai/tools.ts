@@ -10,5 +10,5 @@ if(rows.length)return rows.slice(0,8);
 if(budget!==null){const{data}=await s.from("products").select("id,name,description,category,price,sale_price,currency,images,availability,inventory_quantity,product_url").eq("tenant_id",tenantId).or(`sale_price.lte.${budget},price.lte.${budget}`).limit(8);return(data??[]) as Product[]}
 return[]
 }
-export async function getProductVariants(tenantId:string,productIds:string[]){if(!productIds.length)return[];const s=await createClient();const{data}=await s.from("product_variants").select("id,product_id,sku,name,size,color,price,inventory_quantity,availability,attributes").eq("tenant_id",tenantId).in("product_id",productIds).limit(100);return data??[]}
+export async function getProductVariants(tenantId:string,productIds:string[]){if(!productIds.length)return[];const s=await createClient();const{data}=await s.from("product_variants").select("id,product_id,sku,name,price,sale_price,inventory_quantity,availability,attributes").eq("tenant_id",tenantId).in("product_id",productIds).limit(100);return data??[]}
 export async function getBusinessPolicy(tenantId:string){const s=await createClient();const{data}=await s.from("knowledge_documents").select("title,content").eq("tenant_id",tenantId).eq("source_type","policy").eq("status","active").limit(20);return data??[]}
