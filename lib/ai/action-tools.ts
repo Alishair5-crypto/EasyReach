@@ -130,11 +130,14 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    if(items.some((x:any)=>!id(x.product_id)&&!id(x.variant_id)))return fail(name,"invalid_items","Each item needs a valid product_id or variant_id.");
    if(items.some((x:any)=>id(x.product_id)&&id(x.variant_id)))return fail(name,"invalid_items","Each item must use either product_id or variant_id, not both.");
    if(items.some((x:any)=>!Number.isInteger(Number(x.quantity))||Number(x.quantity)<=0||Number(x.quantity)>1000))return fail(name,"invalid_quantity","Invalid quantity.");
-   const{data,error}=await s.rpc("create_order_atomic",{p_tenant_id:ctx.tenantId,p_customer_id:customerId,p_source_channel:text(a.source_channel,100)||null,p_currency:text(a.currency,10)||"PKR",p_items:items});
-   if(error)return fail(name,"order_creation_failed",error.message.includes("insufficient_inventory")?"Requested inventory is not available.":"The order could not be created safely.");
-   const{data:order}=await s.from("orders").select("id,status,total,currency,payment_status,source_channel,created_at,updated_at").eq("tenant_id",ctx.tenantId).eq("id",data).maybeSingle();
-   if(!order)return fail(name,"order_read_failed","Order was created but could not be verified.");
-   return{ok:true,tool:name,data:{order}};
+   const confirmationTokenHash=text(a.confirmation_token_hash,128);
+   if(!confirmationTokenHash)return fail(name,"confirmation_required","An explicit server-issued order confirmation is required.");
+   const{data,error}=await s.rpc("execute_confirmed_order_atomic",{p_tenant_id:ctx.tenantId,p_token_hash:confirmationTokenHash});
+   if(error)return fail(name,"order_confirmation_failed",error.message.includes("already_used")?"The confirmation has already been used.":error.message.includes("expired")?"The confirmation has expired.":error.message.includes("required")?"Explicit confirmation is required.":"The confirmed order could not be created safely.");
+   if(!data?.order_id)return fail(name,"order_read_failed","The order action completed without a verified order result.");
+   const{data:order}=await s.from("orders").select("id,status,total,currency,payment_status,source_channel,created_at,updated_at").eq("tenant_id",ctx.tenantId).eq("id",data.order_id).maybeSingle();
+   if(!order)return fail(name,"order_read_failed","Order action completed but the order could not be verified.");
+   return{ok:true,tool:name,data:{order,confirmation_id:data.confirmation_id}};
   }
 
   if(name==="get_order"){
@@ -163,10 +166,12 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    const channel=text(a.channel,50);if(!["whatsapp","website","instagram","facebook","email"].includes(channel))return fail(name,"invalid_channel","Unsupported follow-up channel.");
    const message=text(a.message,4000);if(!message)return fail(name,"message_required","Follow-up message is required.");
    const when=text(a.scheduled_for,100);const dt=new Date(when);if(!when||Number.isNaN(dt.getTime())||dt.getTime()<=Date.now())return fail(name,"invalid_schedule","scheduled_for must be a valid future timestamp.");
-   const payload={tenant_id:ctx.tenantId,customer_id:customerId,conversation_id:id(a.conversation_id)?a.conversation_id:null,channel,message,scheduled_for:dt.toISOString(),status:"scheduled",attempts:0,last_error:null};
-   const{data,error}=await s.from("followups").insert(payload).select("id,customer_id,conversation_id,channel,message,scheduled_for,status,created_at,updated_at").single();
-   if(error)throw error;
-   return{ok:true,tool:name,data};
+   const{data,error}=await s.rpc("schedule_followup_atomic",{p_tenant_id:ctx.tenantId,p_customer_id:customerId,p_conversation_id:id(a.conversation_id)?a.conversation_id:null,p_channel:channel,p_message:message,p_scheduled_for:dt.toISOString()});
+   if(error)return fail(name,"followup_creation_failed",error.message.includes("usage_limit_exceeded")?"The follow-up limit has been reached.":"The follow-up could not be scheduled safely.");
+   if(!data?.followup_id)return fail(name,"followup_creation_failed","The follow-up was not verified after scheduling.");
+   const{data:followup}=await s.from("followups").select("id,customer_id,conversation_id,channel,message,scheduled_for,status,created_at,updated_at").eq("tenant_id",ctx.tenantId).eq("id",data.followup_id).maybeSingle();
+   if(!followup)return fail(name,"followup_read_failed","Follow-up was scheduled but could not be verified.");
+   return{ok:true,tool:name,data:followup};
   }
 
   if(name==="send_product"||name==="send_checkout"){
@@ -207,7 +212,7 @@ export const AI_TOOL_DEFINITIONS:AIToolDefinition[]=[
  {type:"function",function:{name:"search_knowledge",description:"Search active business knowledge for the current tenant.",parameters:{type:"object",properties:{query:{type:"string",maxLength:1000}},required:["query"],additionalProperties:false}}},
  {type:"function",function:{name:"get_business_policy",description:"Read verified business policies.",parameters:{type:"object",properties:{},additionalProperties:false}}},
  {type:"function",function:{name:"create_lead",description:"Create a qualified sales lead for the current customer when sales intent is clear.",parameters:{type:"object",properties:{customer_id:{type:"string"},status:{type:"string",enum:["new","qualified","won","lost"]},source_channel:{type:"string"},budget:{type:"number"},intent:{type:"string",maxLength:500},notes:{type:"string",maxLength:2000}},additionalProperties:false}}},
- {type:"function",function:{name:"create_order",description:"Create an order only after the customer has explicitly confirmed the final items and quantities. Backend confirmation controls still apply.",parameters:{type:"object",properties:{customer_id:{type:"string"},source_channel:{type:"string"},currency:{type:"string"},items:{type:"array",minItems:1,maxItems:50,items:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"},quantity:{type:"integer",minimum:1}},additionalProperties:false}}},required:["items"],additionalProperties:false}}},
+ {type:"function",function:{name:"create_order",description:"Create an order only through an explicit server-issued confirmation token; direct execution is blocked.",parameters:{type:"object",properties:{customer_id:{type:"string"},source_channel:{type:"string"},currency:{type:"string"},items:{type:"array",minItems:1,maxItems:50,items:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"},quantity:{type:"integer",minimum:1}},additionalProperties:false}}},required:["items"],additionalProperties:false}}},
  {type:"function",function:{name:"get_order",description:"Read one verified order.",parameters:{type:"object",properties:{order_id:{type:"string"}},required:["order_id"],additionalProperties:false}}},
  {type:"function",function:{name:"get_customer",description:"Read Customer 360 data for the current tenant.",parameters:{type:"object",properties:{customer_id:{type:"string"}},additionalProperties:false}}},
  {type:"function",function:{name:"send_product",description:"Send a product through a configured outbound channel; never claim success unless the adapter confirms it.",parameters:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"},conversation_id:{type:"string"}},additionalProperties:false}}},
