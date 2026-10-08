@@ -98,7 +98,7 @@ export async function downloadEvolutionMedia(secret: Record<string, unknown>, me
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
   if (!message || typeof message !== "object") throw new Error("whatsapp_evolution_media_message_required");
 
-  const response = await fetch(`${baseUrl}/message/downloadimage`, {
+  const response = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${encodeURIComponent(instance)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: apiKey },
     body: JSON.stringify({ message }),
