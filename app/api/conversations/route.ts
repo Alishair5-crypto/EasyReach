@@ -8,7 +8,7 @@ const clean=(v:string)=>v.replace(/[,%()]/g," ").trim().slice(0,120);
 
 export async function GET(req:Request){
   try{
-    const {supabase,tenant}=await getTenantContext();
+    const {supabase,tenant,user}=await getTenantContext();
     if(!tenant)return NextResponse.json({error:"workspace_required"},{status:400});
     const u=new URL(req.url),q=clean(u.searchParams.get("q")??""),status=u.searchParams.get("status")??"",priority=u.searchParams.get("priority")??"",channel=u.searchParams.get("channel")??"",assignment=u.searchParams.get("assignment")??"all";
     const limit=Math.min(50,Math.max(1,Number(u.searchParams.get("limit")??30)||30));
@@ -16,7 +16,7 @@ export async function GET(req:Request){
     if(status&&allowedStatuses.includes(status as typeof allowedStatuses[number]))query=query.eq("status",status);
     if(priority&&allowedPriorities.includes(priority as typeof allowedPriorities[number]))query=query.eq("priority",priority);
     if(channel&&allowedChannels.includes(channel as typeof allowedChannels[number]))query=query.eq("channel",channel);
-    if(assignment==="unassigned")query=query.is("assigned_to",null); else if(assignment==="mine")query=query.eq("assigned_to",(await getTenantContext()).user.id);
+    if(assignment==="unassigned")query=query.is("assigned_to",null); else if(assignment==="mine")query=query.eq("assigned_to",user.id);
     const {data:conversations,error}=await query;if(error)throw error;
     const rows=conversations??[], customerIds=rows.map(x=>x.customer_id).filter(Boolean) as string[], ids=rows.map(x=>x.id);
     const [customerResult,memberResult,messageResult]=await Promise.all([
