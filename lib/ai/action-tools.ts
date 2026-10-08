@@ -47,7 +47,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    if(productId!==undefined&&!id(productId))return fail(name,"invalid_product_id","Invalid product_id.");
    if(variantId===undefined&&productId===undefined)return fail(name,"product_or_variant_required","product_id or variant_id is required.");
    if(variantId){
-    const{data,error}=await s.from("product_variants").select("id,product_id,sku,name,size,color,inventory_quantity,availability,updated_at").eq("tenant_id",ctx.tenantId).eq("id",variantId).maybeSingle();
+    const{data,error}=await s.from("product_variants").select("id,product_id,sku,name,attributes,inventory_quantity,availability,updated_at").eq("tenant_id",ctx.tenantId).eq("id",variantId).maybeSingle();
     if(error)throw error;if(!data)return fail(name,"variant_not_found","Variant was not found.");
     return{ok:true,tool:name,data:{id:data.id,type:"variant",inventory_quantity:data.inventory_quantity,availability:data.availability,updated_at:data.updated_at}};
    }
@@ -73,7 +73,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
 
   if(name==="get_variant"){
    const variantId=a.variant_id;if(!id(variantId))return fail(name,"invalid_variant_id","A valid variant_id is required.");
-   const{data,error}=await s.from("product_variants").select("id,product_id,external_id,sku,name,size,color,price,inventory_quantity,availability,attributes,updated_at").eq("tenant_id",ctx.tenantId).eq("id",variantId).maybeSingle();
+   const{data,error}=await s.from("product_variants").select("id,product_id,external_id,sku,name,price,inventory_quantity,availability,attributes,updated_at").eq("tenant_id",ctx.tenantId).eq("id",variantId).maybeSingle();
    if(error)throw error;if(!data)return fail(name,"variant_not_found","Variant was not found.");
    return{ok:true,tool:name,data};
   }
@@ -84,7 +84,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    let rows:any[]=[];
    for(const w of words){
     const safe=w.replace(/[%_,()]/g,"").slice(0,50);if(!safe)continue;
-    const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,last_synced_at").eq("tenant_id",ctx.tenantId).eq("status","ready").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
+    const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,last_synced_at").eq("tenant_id",ctx.tenantId).eq("status","active").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
     if(error)throw error;rows.push(...(data??[]));
    }
    const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id)).slice(0,20);
@@ -182,7 +182,7 @@ export const SALES_TOOL_REGISTRY:Record<SalesToolName,{description:string;mutati
  check_inventory:{description:"Read live tenant inventory for a product or variant.",mutating:false},
  get_price:{description:"Read live tenant price for a product or variant.",mutating:false},
  get_variant:{description:"Read one verified tenant variant.",mutating:false},
- search_knowledge:{description:"Search ready tenant business knowledge.",mutating:false},
+ search_knowledge:{description:"Search active tenant business knowledge.",mutating:false},
  get_business_policy:{description:"Read verified tenant policies.",mutating:false},
  create_lead:{description:"Create a tenant-scoped lead after customer qualification.",mutating:true},
  create_order:{description:"Create an atomic tenant-scoped order using server-verified catalog data.",mutating:true},
@@ -201,7 +201,7 @@ export const AI_TOOL_DEFINITIONS:AIToolDefinition[]=[
  {type:"function",function:{name:"check_inventory",description:"Read live inventory for one product or variant.",parameters:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"}},additionalProperties:false}}},
  {type:"function",function:{name:"get_price",description:"Read live price for one product or variant.",parameters:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"}},additionalProperties:false}}},
  {type:"function",function:{name:"get_variant",description:"Read one verified product variant.",parameters:{type:"object",properties:{variant_id:{type:"string"}},required:["variant_id"],additionalProperties:false}}},
- {type:"function",function:{name:"search_knowledge",description:"Search ready business knowledge for the current tenant.",parameters:{type:"object",properties:{query:{type:"string",maxLength:1000}},required:["query"],additionalProperties:false}}},
+ {type:"function",function:{name:"search_knowledge",description:"Search active business knowledge for the current tenant.",parameters:{type:"object",properties:{query:{type:"string",maxLength:1000}},required:["query"],additionalProperties:false}}},
  {type:"function",function:{name:"get_business_policy",description:"Read verified business policies.",parameters:{type:"object",properties:{},additionalProperties:false}}},
  {type:"function",function:{name:"create_lead",description:"Create a qualified sales lead for the current customer when sales intent is clear.",parameters:{type:"object",properties:{customer_id:{type:"string"},status:{type:"string",enum:["new","qualified","won","lost"]},source_channel:{type:"string"},budget:{type:"number"},intent:{type:"string",maxLength:500},notes:{type:"string",maxLength:2000}},additionalProperties:false}}},
  {type:"function",function:{name:"create_order",description:"Create an order only after the customer has explicitly confirmed the final items and quantities. Backend confirmation controls still apply.",parameters:{type:"object",properties:{customer_id:{type:"string"},source_channel:{type:"string"},currency:{type:"string"},items:{type:"array",minItems:1,maxItems:50,items:{type:"object",properties:{product_id:{type:"string"},variant_id:{type:"string"},quantity:{type:"integer",minimum:1}},additionalProperties:false}}},required:["items"],additionalProperties:false}}},
