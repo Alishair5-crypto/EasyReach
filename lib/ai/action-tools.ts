@@ -20,8 +20,8 @@ async function customer(s:any,tenantId:string,customerId:string){
  return data??null;
 }
 
-export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:unknown):Promise<ToolResult>{
- const s=await createClient();
+export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:unknown,db?:SupabaseClient):Promise<ToolResult>{
+ const s=db??await createClient();
  if(!ctx.tenantId||!ctx.userId)return fail(name,"not_authorized","Authenticated tenant context is required.");
  if(!name)return fail("unknown","invalid_tool","Tool name is required.");
  const a=(args&&typeof args==="object"&&!Array.isArray(args))?args as Record<string,unknown>:{};
@@ -29,7 +29,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
  try{
   if(name==="search_products"){
    const q=text(a.query,1000);if(!q)return fail(name,"invalid_arguments","query is required.");
-   const data=await searchProducts(ctx.tenantId,q);
+   const data=await searchProducts(ctx.tenantId,q,s);
    return{ok:true,tool:name,data:data.map(p=>({id:p.id,name:p.name,description:p.description,category:p.category,price:p.price,sale_price:p.sale_price,currency:p.currency,images:p.images,availability:p.availability,inventory_quantity:p.inventory_quantity,product_url:p.product_url}))};
   }
 
@@ -37,7 +37,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    const productId=a.product_id;if(!id(productId))return fail(name,"invalid_product_id","A valid product_id is required.");
    const{data,error}=await s.from("products").select("id,name,description,category,price,sale_price,currency,images,attributes,availability,inventory_quantity,product_url,source,last_synced_at,updated_at").eq("tenant_id",ctx.tenantId).eq("id",productId).maybeSingle();
    if(error)throw error;if(!data)return fail(name,"product_not_found","Product was not found in this business.");
-   const variants=await getProductVariants(ctx.tenantId,[productId as string]);
+   const variants=await getProductVariants(ctx.tenantId,[productId as string],s);
    return{ok:true,tool:name,data:{...data,variants}};
   }
 
@@ -92,7 +92,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
   }
 
   if(name==="get_business_policy"){
-   return{ok:true,tool:name,data:await getBusinessPolicy(ctx.tenantId)};
+   return{ok:true,tool:name,data:await getBusinessPolicy(ctx.tenantId,s)};
   }
 
   if(name==="get_customer"){
