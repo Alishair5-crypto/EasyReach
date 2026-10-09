@@ -39,6 +39,23 @@ export async function getEvolutionStatus(secret: Record<string, unknown>) {
   return await response.json() as Record<string, unknown>;
 }
 
+export function normalizeEvolutionConnectionState(payload: Record<string, unknown>) {
+  const instance = payload.instance && typeof payload.instance === "object"
+    ? payload.instance as Record<string, unknown>
+    : {};
+  const data = payload.data && typeof payload.data === "object"
+    ? payload.data as Record<string, unknown>
+    : {};
+  const raw = [instance.state, instance.status, payload.state, payload.status, data.state, data.status]
+    .find((value) => typeof value === "string" && value.trim().length > 0);
+  const state = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (state === "open" || state === "connected") return "connected";
+  if (state === "connecting" || state === "pairing") return "connecting";
+  if (state === "close" || state === "closed" || state === "disconnected") return "disconnected";
+  if (state.includes("qr")) return "qr_ready";
+  return "preparing";
+}
+
 export async function getEvolutionQr(secret: Record<string, unknown>) {
   const baseUrl = stripTrailingSlashes(requiredString(secret, "base_url"));
   const apiKey = requiredString(secret, "api_key");
