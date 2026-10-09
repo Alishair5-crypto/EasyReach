@@ -41,4 +41,8 @@ describe("order and AI confirmation authorization regression contracts", () => {
     expect(migration).toMatch(/payload_hash, token_hash, expires_at[\s\S]*?extensions\.digest\(p_payload::text, 'sha256'\)/i);
     expect(migration).toMatch(/v_hash := encode\(extensions\.digest\(c\.payload::text, 'sha256'\), 'hex'\)/i);
   });
+
+  it("temporarily removes and restores the immutable trigger only for legacy hash backfill", () => {
+    expect(migration).toMatch(/drop trigger if exists ai_action_confirmations_immutable[\s\S]*?update public\.ai_action_confirmations[\s\S]*?create trigger ai_action_confirmations_immutable/i);
+  });
 });
