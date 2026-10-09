@@ -49,17 +49,6 @@ export async function POST(req: Request) {
       last_synced_at: new Date().toISOString()
     }).select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
     if (error) throw error;
-
-    const audit = await supabase.from("audit_logs").insert({
-      tenant_id: tenant.id,
-      actor_id: user.id,
-      action: "knowledge.created",
-      resource_type: "knowledge_document",
-      resource_id: data.id,
-      new_data: data,
-      reason: "Business Brain document created"
-    });
-    if (audit.error) throw audit.error;
     return NextResponse.json({ document: data }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "business_brain_create_failed" }, { status: 500 });
@@ -88,12 +77,6 @@ export async function PATCH(req: Request) {
         .eq("tenant_id", tenant.id).eq("id", id)
         .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
       if (error) throw error;
-      const audit = await supabase.from("audit_logs").insert({
-        tenant_id: tenant.id, actor_id: user.id, action: "knowledge.verified",
-        resource_type: "knowledge_document", resource_id: id, old_data: before, new_data: data,
-        reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : "Business Brain document verified"
-      });
-      if (audit.error) throw audit.error;
       return NextResponse.json({ document: data });
     }
 
@@ -103,12 +86,6 @@ export async function PATCH(req: Request) {
         .eq("tenant_id", tenant.id).eq("id", id)
         .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
       if (error) throw error;
-      const audit = await supabase.from("audit_logs").insert({
-        tenant_id: tenant.id, actor_id: user.id, action: "knowledge.rejected",
-        resource_type: "knowledge_document", resource_id: id, old_data: before, new_data: data,
-        reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : "Business Brain document rejected"
-      });
-      if (audit.error) throw audit.error;
       return NextResponse.json({ document: data });
     }
 
@@ -142,13 +119,6 @@ export async function PATCH(req: Request) {
       .eq("tenant_id", tenant.id).eq("id", id)
       .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
     if (error) throw error;
-
-    const audit = await supabase.from("audit_logs").insert({
-      tenant_id: tenant.id, actor_id: user.id, action: "knowledge.updated",
-      resource_type: "knowledge_document", resource_id: id, old_data: before, new_data: data,
-      reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : "Business Brain document updated"
-    });
-    if (audit.error) throw audit.error;
     return NextResponse.json({ document: data });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "business_brain_update_failed" }, { status: 500 });

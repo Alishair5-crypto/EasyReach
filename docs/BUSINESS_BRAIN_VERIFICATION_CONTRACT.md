@@ -33,6 +33,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 - Verify all existing knowledge-document create/update/import flows preserve verification state correctly.
 - Verify changed content returns to pending review; this behavior is not considered complete until the ingestion/update code is inspected and tested.
 - Run adversarial tenant A/B retrieval tests and RLS tests against a real test database, including direct table writes by cashier/member roles.
+- Verify audit records are transactionally coupled to document changes and audit failures roll back the write.
 - Confirm policy screens expose review status, reviewer, verification timestamp, source, and stale/conflict warnings.
 - Test prompt-injection documents, empty knowledge, rejected content, stale content, and conflicting approved policies.
 - Do not call this production-ready until database migrations, UI review workflow, tenant isolation, and end-to-end tests pass.

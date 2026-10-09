@@ -47,8 +47,14 @@ test("Business Brain verification actions are role-gated and tenant-scoped", asy
   const route = await readFile(new URL("../app/api/business-brain/route.ts", import.meta.url), "utf8");
   assert.match(route, /EDIT_ROLES\.has\(membership\.role\)/);
   assert.match(route, /\.eq\("tenant_id", tenant\.id\)\.eq\("id", id\)/);
-  assert.match(route, /action: "knowledge\.verified"/);
-  assert.match(route, /action: "knowledge\.rejected"/);
+  assert.doesNotMatch(route, /from\("audit_logs"\)/);
+  const auditMigration = await readFile(new URL("../supabase/migrations/20261009093000_business_brain_atomic_audit.sql", import.meta.url), "utf8");
+  assert.match(auditMigration, /create trigger knowledge_document_audit_after_write/);
+  assert.match(auditMigration, /insert into public\.audit_logs/);
+  assert.match(auditMigration, /knowledge\.verified/);
+  assert.match(auditMigration, /knowledge\.rejected/);
+  assert.match(auditMigration, /to_jsonb\(old\)/);
+  assert.match(auditMigration, /to_jsonb\(new\)/);
 });
 
 test("database write policies enforce Business Brain editor roles", async () => {
@@ -59,4 +65,13 @@ test("database write policies enforce Business Brain editor roles", async () => 
   assert.match(rlsMigration, /create policy knowledge_editor_update[\s\S]*for update[\s\S]*using \(private\.is_tenant_knowledge_editor\(tenant_id\)\)[\s\S]*with check \(private\.is_tenant_knowledge_editor\(tenant_id\)\)/);
   assert.match(rlsMigration, /drop policy if exists knowledge_member on public\.knowledge_documents/);
   assert.match(rlsMigration, /Direct DELETE is intentionally not granted/);
+});
+
+test("Business Brain audit records share the document transaction", async () => {
+  const auditMigration = await readFile(new URL("../supabase/migrations/20261009093000_business_brain_atomic_audit.sql", import.meta.url), "utf8");
+  assert.match(auditMigration, /create or replace function private\.audit_knowledge_document_change\(\)/);
+  assert.match(auditMigration, /after insert or update on public\.knowledge_documents/);
+  assert.match(auditMigration, /security invoker|security definer/i) === false;
+  assert.match(auditMigration, /insert into public\.audit_logs/);
+  assert.match(auditMigration, /actor_id, action, resource_type, resource_id, old_data, new_data, reason/);
 });
