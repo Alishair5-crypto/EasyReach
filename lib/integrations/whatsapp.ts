@@ -30,12 +30,13 @@ export async function getEvolutionStatus(secret: Record<string, unknown>) {
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
-  const urls = [`${baseUrl}/instance/status/${encodeURIComponent(instance)}`, `${baseUrl}/instance/${encodeURIComponent(instance)}/status`, `${baseUrl}/instance/status`];
-  for (const url of urls) {
-    const response = await fetch(url, { headers: { apikey: apiKey }, cache: "no-store" });
-    if (response.ok) return await response.json() as Record<string, unknown>;
-  }
-  throw new Error("whatsapp_evolution_status_failed");
+
+  // Evolution API v2 exposes the state at /instance/connectionState/{instanceName}.
+  const response = await fetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(instance)}`, {
+    headers: { apikey: apiKey }, cache: "no-store",
+  });
+  if (!response.ok) throw new Error("whatsapp_evolution_status_failed");
+  return await response.json() as Record<string, unknown>;
 }
 
 export async function getEvolutionQr(secret: Record<string, unknown>) {
@@ -43,17 +44,45 @@ export async function getEvolutionQr(secret: Record<string, unknown>) {
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
-  for (const url of [`${baseUrl}/instance/connect`, `${baseUrl}/instance/${encodeURIComponent(instance)}/connect`]) {
-    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", apikey: apiKey }, body: JSON.stringify({ instanceName: instance, webhookUrl: webhookUrl(), webhookByEvents: true }), cache: "no-store" });
-    if (response.ok) return await response.json();
+
+  const instancePath = encodeURIComponent(instance);
+  const headers = { "Content-Type": "application/json", apikey: apiKey };
+  const connectUrl = `${baseUrl}/instance/connect/${instancePath}`;
+
+  // Evolution API v2 uses GET /instance/connect/{instanceName}, not POST /instance/connect.
+  let response = await fetch(connectUrl, { method: "GET", headers, cache: "no-store" });
+
+  // A configured URL/key with a missing instance is recoverable: create that named
+  // instance, then request its real QR. Do not create a duplicate for other errors.
+  if (response.status === 404) {
+    const create = await fetch(`${baseUrl}/instance/create`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        instanceName: instance,
+        integration: "WHATSAPP-BAILEYS",
+        qrcode: true,
+      }),
+      cache: "no-store",
+    });
+    if (!create.ok) throw new Error("whatsapp_evolution_instance_create_failed");
+    response = await fetch(connectUrl, { method: "GET", headers, cache: "no-store" });
   }
-  const qr = await fetch(`${baseUrl}/instance/${encodeURIComponent(instance)}/qrcode`, { headers: { apikey: apiKey }, cache: "no-store" });
-  if (qr.ok) return await qr.json();
-  throw new Error("whatsapp_evolution_qr_failed");
+
+  if (!response.ok) throw new Error("whatsapp_evolution_qr_failed");
+  const payload = await response.json().catch(() => null) as Record<string, unknown> | null;
+  if (!payload || !(typeof payload.base64 === "string" || typeof payload.code === "string" ||
+      (payload.qrcode && typeof payload.qrcode === "object") || (payload.qr && typeof payload.qr === "object"))) {
+    throw new Error("whatsapp_evolution_qr_payload_missing");
+  }
+  return payload;
 }
 
 function webhookUrl() {
-  const base = process.env.NEXT_PUBLIC_APP_URL;
+  const configured = process.env.NEXT_PUBLIC_APP_URL;
+  const productionDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const deploymentDomain = process.env.VERCEL_URL;
+  const base = configured || (productionDomain ? `https://${productionDomain}` : deploymentDomain ? `https://${deploymentDomain}` : "");
   if (!base) throw new Error("app_url_not_configured");
   return stripTrailingSlashes(base) + "/api/webhooks/whatsapp";
 }
