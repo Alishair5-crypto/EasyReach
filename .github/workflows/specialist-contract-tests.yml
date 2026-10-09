@@ -1,0 +1,26 @@
+name: Specialist contract tests
+
+on:
+  push:
+    branches:
+      - fix/evolution-build-validated
+  pull_request:
+    branches:
+      - feat/whatsapp-evolution-production-hardening
+
+jobs:
+  specialist-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run specialist contract tests
+        run: npm run test:specialists
+      - name: Type-check application
+        run: npm run typecheck
