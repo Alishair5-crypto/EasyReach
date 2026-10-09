@@ -75,7 +75,7 @@ test("authenticated Business Brain tenant, role, immutability, and audit integra
       "editor test identity must have an editor role in both test tenants");
 
     const { data: viewerMemberships, error: viewerMembershipError } = await viewer
-      .from("tenant_members").select("tenant_id,role").eq("user_id", viewerUser.id).eq("tenant_id", tenantA);
+      .from("tenant_members").select("tenant_id,role").in("tenant_id", [tenantA, tenantB]).eq("user_id", viewerUser.id);
     assert.ifError(viewerMembershipError);
     assert.ok((viewerMemberships ?? []).some((m) => m.tenant_id === tenantA), "viewer must belong to tenant A");
     assert.ok(!(viewerMemberships ?? []).some((m) => m.tenant_id === tenantB), "viewer must not belong to tenant B");
@@ -105,6 +105,19 @@ test("authenticated Business Brain tenant, role, immutability, and audit integra
     }).select("id").maybeSingle();
     assert.ok(viewerInsertError || !viewerInsert, "viewer insert must be rejected by database policy");
     assert.equal(viewerInsert, null, "viewer must not create Business Brain documents");
+
+    const { data: forgedAudit, error: forgedAuditError } = await viewer.from("audit_logs").insert({
+      tenant_id: tenantA,
+      actor_id: editorUser.id,
+      action: "knowledge.updated",
+      resource_type: "knowledge_document",
+      resource_id: docA.id,
+      old_data: { content: "original" },
+      new_data: { content: "forged" },
+      reason: "forged actor must be rejected",
+    }).select("id").maybeSingle();
+    assert.ok(forgedAuditError || !forgedAudit, "viewer must not forge audit entries under another actor's identity");
+    assert.equal(forgedAudit, null, "forged audit insert must not persist");
 
     const { data: viewerUpdate, error: viewerUpdateError } = await viewer.from("knowledge_documents")
       .update({ content: "unauthorized update must not persist" }).eq("id", docA.id).select("id").maybeSingle();

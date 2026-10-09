@@ -166,3 +166,14 @@ test("Business Brain tenant ownership is immutable at the database layer", async
   assert.match(tenantMigration, /before update of tenant_id on public\.knowledge_documents/);
   assert.doesNotMatch(tenantMigration, /security definer/i);
 });
+
+
+test("audit failure is not swallowed and actor identity is policy-bound", async () => {
+  const auditMigration = await readFile(new URL("../supabase/migrations/20261009093000_business_brain_atomic_audit.sql", import.meta.url), "utf8");
+  const rlsMigration = await readFile(new URL("../supabase/migrations/20261008001000_harden_tenant_rls.sql", import.meta.url), "utf8");
+  assert.match(auditMigration, /insert into public\.audit_logs/);
+  assert.doesNotMatch(auditMigration, /exception\s+when\s+others/i,
+    "audit trigger must not swallow an audit insert failure; PostgreSQL should roll back the document write");
+  assert.match(rlsMigration, /create policy audit_member_insert[\s\S]*actor_id = \(select auth\.uid\(\)\)/,
+    "authenticated clients may not submit audit rows with a forged actor ID");
+});
