@@ -43,7 +43,7 @@ export const SPECIALIST_CONTRACTS: Record<SpecialistId, SpecialistContract> = {
     id: "sales_recommendation",
     name: "Sales Recommendation & Objection Handling",
     responsibility: "Recommend catalog-backed options and handle objections using verified business policy.",
-    tools: [...catalog, ...policy, "create_lead"],
+    tools: [...catalog, ...policy],
     rules: ["Every material product, price and policy claim needs retrieved evidence.", "Never invent urgency, scarcity, discounts or guarantees.", "Escalate requests outside approved Sales Rules."],
   },
   order_checkout: {
