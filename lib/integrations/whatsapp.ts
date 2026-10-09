@@ -1,4 +1,5 @@
 import { getIntegrationSecret } from "./server";
+import { safeEvolutionFetch } from "./safe-evolution-fetch";
 
 export type WhatsAppProvider = "whatsapp_meta" | "whatsapp_evolution";
 const graphVersion = () => process.env.META_GRAPH_API_VERSION ?? "v25.0";
@@ -36,7 +37,7 @@ export async function getEvolutionStatus(secret: Record<string, unknown>) {
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
 
-  const response = await fetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(instance)}`, {
+  const response = await safeEvolutionFetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(instance)}`, {
     headers: { apikey: apiKey }, cache: "no-store"
   });
   if (!response.ok) throw new Error(`whatsapp_evolution_status_failed:${response.status}`);
@@ -50,7 +51,7 @@ export async function configureEvolutionWebhook(secret: Record<string, unknown>)
   const webhookSecret = requiredString(secret, "webhook_secret");
   if (!baseUrl || !apiKey || !instance || !webhookSecret) throw new Error("whatsapp_evolution_webhook_credentials_invalid");
 
-  const response = await fetch(`${baseUrl}/webhook/set/${encodeURIComponent(instance)}`, {
+  const response = await safeEvolutionFetch(`${baseUrl}/webhook/set/${encodeURIComponent(instance)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: apiKey },
     body: JSON.stringify({
@@ -78,7 +79,7 @@ export async function getEvolutionQr(secret: Record<string, unknown>) {
 
   await configureEvolutionWebhook(secret);
 
-  const response = await fetch(`${baseUrl}/instance/connect/${encodeURIComponent(instance)}`, {
+  const response = await safeEvolutionFetch(`${baseUrl}/instance/connect/${encodeURIComponent(instance)}`, {
     headers: { apikey: apiKey }, cache: "no-store"
   });
   if (response.ok) return await readJson(response);
@@ -98,7 +99,7 @@ export async function downloadEvolutionMedia(secret: Record<string, unknown>, me
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
   if (!message || typeof message !== "object") throw new Error("whatsapp_evolution_media_message_required");
 
-  const response = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${encodeURIComponent(instance)}`, {
+  const response = await safeEvolutionFetch(`${baseUrl}/chat/getBase64FromMediaMessage/${encodeURIComponent(instance)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: apiKey },
     body: JSON.stringify({ message }),
@@ -164,7 +165,7 @@ export async function sendWhatsAppText(integrationId: string, to: string, text: 
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
-  const response = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
+  const response = await safeEvolutionFetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: apiKey },
     body: JSON.stringify({ number: to, text }),
