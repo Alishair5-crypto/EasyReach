@@ -30,3 +30,17 @@ test("webhook completion is not acknowledged if receipt persistence fails", () =
   assert.match(source, /assertDbWrite\(\(await admin\.from\("webhook_events"\)\.update\(\{status:"processed"/);
   assert.match(source, /catch\(error\)\{if\(admin&&receiptId\)/);
 });
+
+test("outbound WhatsApp replies record pending, sent, and ambiguous delivery states", () => {
+  assert.match(source, /delivery_status:"pending"/);
+  assert.match(source, /delivery_status:"sent"/);
+  assert.match(source, /delivery_status:"unknown"/);
+  assert.match(source, /outbound_message_pending_update_failed/);
+  assert.match(source, /outbound_message_sent_update_failed/);
+  assert.match(source, /delivery_error:message\.slice\(0,500\)/);
+});
+
+test("provider send ambiguity is not falsely reported as sent", () => {
+  assert.match(source, /catch\(sendError\)[\s\S]*delivery_status:"unknown"[\s\S]*throw sendError/);
+  assert.match(source, /return\{sent:true,messageId:result\.messageId\}/);
+});
