@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getEvolutionQr, getEvolutionStatus } from "../../lib/integrations/whatsapp";
+import { getEvolutionQr, getEvolutionStatus, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
 
 const secret = {
   base_url: "https://evolution.example",
@@ -74,5 +74,20 @@ describe("Evolution API v2 QR flow", () => {
 
     await expect(getEvolutionQr({ ...secret, api_key: "" })).rejects.toThrow("whatsapp_evolution_credentials_invalid");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("Evolution connection-state normalization", () => {
+  it.each([
+    [{ instance: { state: "open" } }, "connected"],
+    [{ instance: { state: "connected" } }, "connected"],
+    [{ instance: { state: "connecting" } }, "connecting"],
+    [{ instance: { state: "close" } }, "disconnected"],
+    [{ instance: { state: "closed" } }, "disconnected"],
+    [{ instance: { state: "qr" } }, "qr_ready"],
+    [{ instance: { state: "unexpected" } }, "preparing"],
+    [{}, "preparing"],
+  ])("normalizes provider payload %j without false connected claims", (payload, expected) => {
+    expect(normalizeEvolutionConnectionState(payload as Record<string, unknown>)).toBe(expected);
   });
 });
