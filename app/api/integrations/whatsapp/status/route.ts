@@ -28,6 +28,22 @@ export async function POST(req: Request) {
       ? await verifyMetaCredentials(secret)
       : await getEvolutionStatus(secret);
     const now = new Date().toISOString();
+    const evolutionState = String(
+      (providerStatus as any)?.instance?.state ??
+      (providerStatus as any)?.state ??
+      (providerStatus as any)?.instance?.connectionStatus ??
+      (providerStatus as any)?.connectionStatus ??
+      ""
+    ).toLowerCase();
+    const verifiedStatus = integration.kind === "whatsapp_meta"
+      ? "connected"
+      : evolutionState === "open" || evolutionState === "connected"
+        ? "connected"
+        : evolutionState === "connecting"
+          ? "connecting"
+          : evolutionState === "close" || evolutionState === "closed" || evolutionState === "disconnected"
+            ? "disconnected"
+            : "preparing";
 
     const metadata = {
       ...(integration.metadata ?? {}),
@@ -38,22 +54,22 @@ export async function POST(req: Request) {
             verified_name: providerStatus.verified_name ?? null,
             quality_rating: providerStatus.quality_rating ?? null,
           }
-        : {}),
+        : { provider_connection_state: evolutionState || "unknown" }),
     };
 
     const { error: updateError } = await supabase.from("integrations").update({
-      status: "connected", last_sync_at: now, error_message: null, updated_at: now, metadata,
+      status: verifiedStatus, last_sync_at: now, error_message: null, updated_at: now, metadata,
     }).eq("id", integration.id).eq("tenant_id", tenant.id);
     if (updateError) throw updateError;
 
     await supabase.from("audit_logs").insert({
       tenant_id: tenant.id, actor_id: user.id, action: "integration.whatsapp.status_checked",
       resource_type: "integration", resource_id: integration.id,
-      new_data: { provider: integration.kind, status: "connected" },
+      new_data: { provider: integration.kind, status: verifiedStatus },
     });
 
     return NextResponse.json({
-      integrationId: integration.id, provider: integration.kind, status: "connected",
+      integrationId: integration.id, provider: integration.kind, status: verifiedStatus,
       displayName: integration.display_name, providerExternalId: integration.provider_external_id, lastSyncAt: now,
       providerStatus: integration.kind === "whatsapp_meta"
         ? { id: providerStatus.id ?? null, display_phone_number: providerStatus.display_phone_number ?? null, verified_name: providerStatus.verified_name ?? null, quality_rating: providerStatus.quality_rating ?? null }
