@@ -3,7 +3,7 @@ import {getTenantContext} from "@/lib/auth";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const statusMap:Record<string,number>={not_authorized:403,order_not_found:404,invalid_status:400,invalid_idempotency_key:400,invalid_status_transition:409};
-const paymentMap:Record<string,number>={not_authorized:403,order_not_found:404,invalid_payment_status:400,invalid_idempotency_key:400,invalid_payment_transition:409};
+const paymentMap:Record<string,number>={not_authorized:403,order_not_found:404,invalid_payment_status:400,invalid_idempotency_key:400,invalid_payment_transition:409,payment_verification_required:409};
 
 function mapError(message:string,map:Record<string,number>,fallback:string){const k=Object.keys(map).find(x=>message.includes(x));return NextResponse.json({error:k??fallback},{status:k?map[k]:500});}
 function idempotencyKey(req:Request){return req.headers.get("Idempotency-Key")?.trim()||"";}
