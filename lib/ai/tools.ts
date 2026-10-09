@@ -1,5 +1,5 @@
 import{createClient}from"@/lib/supabase/server";
-import type{SupabaseClient}from"@supabase/supabase-js";
+import type{SupabaseClient}from"@supabase/supabase-js";import{annotateKnowledgeTrust}from"./knowledge-trust";
 type Db=SupabaseClient;
 type Product={id:string;name:string;description:string|null;category:string|null;price:number|null;sale_price:number|null;currency:string|null;images:unknown;availability:boolean|null;inventory_quantity:number|null;product_url:string|null;variants?:unknown[]};
 function terms(q:string){return q.toLowerCase().replace(/[^\p{L}\p{N}\s.-]/gu," ").split(/\s+/).filter(x=>x.length>2&&!["mujhe","chahiye","wala","wali","wale","ke","andar","under","with","want","need","the","for","and","hai","ka","ki","kya","is","mein","me"].includes(x)).slice(0,5)}
@@ -13,4 +13,4 @@ if(budget!==null){const{data}=await s.from("products").select("id,name,descripti
 return[]
 }
 export async function getProductVariants(tenantId:string,productIds:string[],db?:Db){if(!productIds.length)return[];const s=db??await createClient();const{data}=await s.from("product_variants").select("id,product_id,sku,name,price,sale_price,inventory_quantity,availability,attributes").eq("tenant_id",tenantId).in("product_id",productIds).limit(100);return data??[]}
-export async function getBusinessPolicy(tenantId:string,db?:Db){const s=db??await createClient();const{data}=await s.from("knowledge_documents").select("title,content").eq("tenant_id",tenantId).eq("source_type","policy").eq("status","active").limit(20);return data??[]}
+export async function getBusinessPolicy(tenantId:string,db?:Db){const s=db??await createClient();const{data,error}=await s.from("knowledge_documents").select("title,content,source_url,verification_status,verified_at,last_synced_at,created_at").eq("tenant_id",tenantId).eq("source_type","policy").eq("status","active").eq("verification_status","verified").limit(20);if(error)throw error;return annotateKnowledgeTrust(data??[]).filter(row=>row.authoritative_eligible)}

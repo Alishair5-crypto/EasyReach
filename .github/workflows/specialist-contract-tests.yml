@@ -1,0 +1,38 @@
+name: Specialist contract tests
+
+on:
+  push:
+    branches:
+      - fix/evolution-build-validated
+  pull_request:
+    branches:
+      - feat/whatsapp-evolution-production-hardening
+
+jobs:
+  specialist-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run specialist contract tests
+        run: npm run test:specialists
+      - name: Run authenticated security integration tests (opt-in)
+        run: npm run test:integration:security
+        env:
+          EASYREACH_INTEGRATION_ALLOW_WRITES: ${{ secrets.EASYREACH_INTEGRATION_ALLOW_WRITES }}
+          SUPABASE_INTEGRATION_URL: ${{ secrets.SUPABASE_INTEGRATION_URL }}
+          SUPABASE_INTEGRATION_ANON_KEY: ${{ secrets.SUPABASE_INTEGRATION_ANON_KEY }}
+          SUPABASE_TEST_TENANT_A_ID: ${{ secrets.SUPABASE_TEST_TENANT_A_ID }}
+          SUPABASE_TEST_TENANT_B_ID: ${{ secrets.SUPABASE_TEST_TENANT_B_ID }}
+          SUPABASE_TEST_EDITOR_EMAIL: ${{ secrets.SUPABASE_TEST_EDITOR_EMAIL }}
+          SUPABASE_TEST_EDITOR_PASSWORD: ${{ secrets.SUPABASE_TEST_EDITOR_PASSWORD }}
+          SUPABASE_TEST_VIEWER_EMAIL: ${{ secrets.SUPABASE_TEST_VIEWER_EMAIL }}
+          SUPABASE_TEST_VIEWER_PASSWORD: ${{ secrets.SUPABASE_TEST_VIEWER_PASSWORD }}
+      - name: Type-check application
+        run: npm run typecheck

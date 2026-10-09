@@ -1,1 +1,28 @@
-{"name":"easyreach","version":"0.2.0","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start","typecheck":"tsc --noEmit"},"dependencies":{"@supabase/ssr":"0.7.0","@supabase/supabase-js":"2.76.1","next":"16.3.8","react":"19.2.4","react-dom":"19.2.4"},"devDependencies":{"@types/node":"22.19.13","@types/react":"19.2.16","@types/react-dom":"19.2.5","typescript":"5.9.3","eslint":"9.39.5","eslint-config-next":"16.3.8"}}
+{
+  "name": "easyreach",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test:specialists": "node --test tests/specialists.test.mjs tests/business-brain.test.mjs tests/knowledge-trust.test.mjs tests/whatsapp-webhook.test.mjs tests/public-url.test.mjs tests/safe-evolution-fetch.test.mjs tests/whatsapp-status.test.mjs",
+    "test:integration:security": "node --test tests/business-brain.integration.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.7.0",
+    "@supabase/supabase-js": "2.76.1",
+    "next": "16.3.8",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.13",
+    "@types/react": "19.2.16",
+    "@types/react-dom": "19.2.5",
+    "typescript": "5.9.3",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.8"
+  }
+}

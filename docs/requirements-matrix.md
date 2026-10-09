@@ -1,4 +1,5 @@
 # EasyReach V11.1 Requirement Matrix
+Last reconciled: 2026-10-09. Branch: `fix/evolution-build-validated` (preview build evidence only; not a production sign-off).
 Status: NOT STARTED / IN PROGRESS / PARTIAL / IMPLEMENTED / TESTED / VERIFIED / UNVERIFIED / SIGNED OFF.
 
 | Area | Requirement | Status | Evidence / gate |
@@ -12,16 +13,16 @@ Status: NOT STARTED / IN PROGRESS / PARTIAL / IMPLEMENTED / TESTED / VERIFIED / 
 | Inbox | Conversations + messages + handoff state | IN PROGRESS | persisted AI conversation flow |
 | Orders | Orders + items + idempotency | IN PROGRESS | tenant/channel/external unique constraint |
 | Integrations | Central connection hub | PARTIAL | Integration lifecycle foundation and WhatsApp provider adapters exist; live provider E2E remains |
-| AI | Master + specialist orchestration | PARTIAL | Master orchestrator, governed tools and readiness flow exist; bounded specialist contract/coverage remains |
-| Website | Secure crawler + widget | NOT STARTED | SSRF/crawler/widget pending |
-| WhatsApp | Meta + Evolution adapters | PARTIAL / UNVERIFIED | Meta/Evolution foundation, webhook handling and outbound adapters exist; real provider E2E/sign-off pending |
+| AI | Master Agent + eight bounded specialist capabilities | PARTIAL / TESTING | Eight contracts documented; deterministic capability routing and specialist-scoped tool allowlists exist. CI passed at commit 5609c90; Business Brain retrieval is now restricted to active + verified tenant-owned knowledge. New regression tests and current commit build/typecheck are pending. |\n| Business Brain | Verified, tenant-isolated authoritative knowledge | PARTIAL / UNVERIFIED | AI policy and knowledge retrieval now require active + verified records and expose verification/sync metadata. Review UI, verification reset after edits, stale/conflict handling, live RLS and adversarial tenant tests remain open. |
+| Website | Secure crawler + website chat widget | PARTIAL | Widget chat/config routes and public widget asset exist; allowed-origin and tenant-scoped conversation checks are present. Secure crawling, redirect/IP revalidation, source ingestion, and full browser/adversarial tests remain unverified. |
+| WhatsApp | Meta + Evolution adapters | PARTIAL / UNVERIFIED | Meta/Evolution setup, encrypted credentials, webhook verification, inbound/outbound handling and status paths exist in source. No confirmed live provider E2E, real QR pairing, inbound/outbound delivery, or production sign-off yet. |
 | Ecommerce | Shopify + WooCommerce | NOT STARTED | provider adapters pending |
 | Sheets | Google Sheets OAuth/sync | NOT STARTED | OAuth/mapping/sync pending |
 | Analytics | Sales intelligence | NOT STARTED | event aggregation pending |
 | Follow-ups | Scheduled follow-up engine | IN PROGRESS | followups schema exists; worker pending |
 | Admin | Tenant/platform administration | NOT STARTED | pending |
 | QA | Browser, security and E2E suites | IN PROGRESS | schema/security audit started |
-| Production | Build + deployment + runtime verification | IN PROGRESS | Deployment/build foundation exists; runtime, security and real-provider verification gates remain |
+| Production | Build + deployment + runtime verification | IN PROGRESS | Vercel preview for `fix/build-literal-newlines` reached READY after parser/CORS fixes. A separate preview is required for this branch; no production promotion, live runtime smoke suite, DB migration verification, browser suite, or real-provider E2E has been signed off. |
 
 ## Non-negotiable engineering rules
 1. NO DATA = NO CLAIM.

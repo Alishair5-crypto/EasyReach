@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 type Doc = {
   id:string; title:string; source_type:string; source_url:string|null; content:string|null;
-  status:string; verification_status:"pending"|"verified"|"rejected"; verified_at:string|null; last_synced_at:string|null;
+  status:string; verification_status:"pending"|"verified"|"rejected"; verified_at:string|null; last_synced_at:string|null; freshness_status?:"current"|"stale"|"unknown"; conflict_status?:"none"|"possible_conflict"; authoritative_eligible?:boolean; trust_reason?:string; freshness_age_days?:number|null;
 };
 const types=["policy","faq","business","shipping","returns","payment","general"];
 
@@ -46,7 +46,7 @@ export default function BusinessBrain(){
       <section className="card customer-list">
         {loading?<p className="muted">Loading Business Brain…</p>:docs.length===0?<div className="empty-card"><strong>No business knowledge yet</strong><p className="muted">Add policies, FAQs, shipping rules, payment information and other exact business facts.</p></div>:docs.map(d=>
           <button className={"customer-row "+(selected?.id===d.id?"selected":"")} key={d.id} onClick={()=>select(d)}>
-            <strong>{d.title}</strong><span>{d.source_type} · {d.status} · {d.verification_status}</span><small>{d.verified_at?"Verified "+new Date(d.verified_at).toLocaleString():d.last_synced_at?"Updated "+new Date(d.last_synced_at).toLocaleString():"Not synced"}</small>
+            <strong>{d.title}</strong><span>{d.source_type} · {d.status} · {d.verification_status}</span><small>{d.freshness_status ? `Freshness: ${d.freshness_status} · ${d.conflict_status === "possible_conflict" ? "Possible conflict" : "No conflict detected"}` : "Trust status unavailable"}</small><small>{d.verified_at?"Verified "+new Date(d.verified_at).toLocaleString():d.last_synced_at?"Updated "+new Date(d.last_synced_at).toLocaleString():"Not synced"}</small>
           </button>
         )}
       </section>
@@ -56,7 +56,7 @@ export default function BusinessBrain(){
           <div><button className="button secondary small" onClick={reset}>New</button>{selected&&<button className="button secondary small" onClick={archive} disabled={saving}>Archive</button>}</div>
         </div>
         {selected&&<div className="card" style={{marginBottom:16}}>
-          <strong>Verification: {selected.verification_status}</strong>
+          <strong>Verification: {selected.verification_status}</strong><p className="muted">Trust: {selected.freshness_status ?? "unknown"} · {selected.conflict_status === "possible_conflict" ? "Possible conflict detected" : "No conflict detected"} · {selected.authoritative_eligible ? "Eligible for authoritative answers" : "Not eligible for authoritative answers"}</p>
           <p className="muted">{selected.verification_status==="verified"?"This record is authoritative runtime knowledge. Editing it will require re-verification.":selected.verification_status==="rejected"?"This record is not authoritative. Review and verify it if correct.":"This record is not yet authoritative."}</p>
           <div style={{display:"flex",gap:8}}>{selected.verification_status!=="verified"&&<button className="button" onClick={verify} disabled={saving||selected.status!=="active"}>Verify</button>}{selected.verification_status==="verified"&&<button className="button secondary" onClick={reject} disabled={saving}>Revoke verification</button>}</div>
         </div>}

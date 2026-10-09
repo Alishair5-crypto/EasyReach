@@ -1,4 +1,4 @@
-import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";import{requireFeature}from"@/lib/entitlements";
+import{createClient}from"@/lib/supabase/server";import type{SupabaseClient}from"@supabase/supabase-js";import{searchProducts,getProductVariants,getBusinessPolicy}from"./tools";import{annotateKnowledgeTrust}from"./knowledge-trust";import{requireFeature}from"@/lib/entitlements";
 
 export type SalesToolName=
 |"search_products"|"get_product"|"check_inventory"|"get_price"|"get_variant"
@@ -84,11 +84,12 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    let rows:any[]=[];
    for(const w of words){
     const safe=w.replace(/[%_,()]/g,"").slice(0,50);if(!safe)continue;
-    const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,last_synced_at").eq("tenant_id",ctx.tenantId).eq("status","active").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
+    const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,source_url,last_synced_at,verification_status,verified_at,created_at").eq("tenant_id",ctx.tenantId).eq("status","active").eq("verification_status","verified").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
     if(error)throw error;rows.push(...(data??[]));
    }
-   const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id)).slice(0,20);
-   return{ok:true,tool:name,data:rows};
+   const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id));
+   const trusted=annotateKnowledgeTrust(rows).filter(row=>row.authoritative_eligible);
+   return{ok:true,tool:name,data:trusted.slice(0,20)};
   }
 
   if(name==="get_business_policy"){

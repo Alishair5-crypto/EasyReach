@@ -66,3 +66,29 @@ The baseline is an architecture/product contract, not proof that every item is a
 9. Final security/E2E/release.
 
 No feature stacking should bypass these gates.
+
+## Follow-up audit — 2026-10-09
+
+Branch: `fix/evolution-build-validated`, created from the current WhatsApp hardening PR head `49d994c289eafb15482aff6708d5bbc024c4379c`.
+
+### Evidence reconciliation
+- The earlier findings above describe the repository state at commit `5116ade1dee47bab37d546eba1a7e7695a23a190`; do not treat them as proof that the same defects remain in later commits.
+- Re-inspection of current `lib/ai/action-tools.ts` shows product-variant queries use the schema's `attributes` field and knowledge retrieval filters `knowledge_documents.status = 'active'`. The two previously reported runtime/schema mismatches are not present in the current PR-head snapshot.
+- The requirements matrix is now reconciled for the website widget and WhatsApp: both are PARTIAL/UNVERIFIED rather than NOT STARTED, because source foundations exist but end-to-end production verification is absent.
+- A separate repair branch, `fix/build-literal-newlines`, reached Vercel READY after targeted source fixes. That preview is based on a diverged commit line and is **not** evidence that the current WhatsApp hardening PR branch builds; this branch must have its own preview build before promotion.
+
+### Current release gates — still open
+1. Build the current PR-derived branch and resolve every compiler/build failure without disabling checks.
+2. Verify tenant isolation, atomic quotas/actions, webhook idempotency, secret handling, and integration status transitions against current schema/migrations.
+3. Run a real Evolution instance connection and webhook round-trip, then test Meta only with configured credentials; no fabricated credentials or simulated success.
+4. Test website widget CORS, conversation ownership, rate limits/abuse controls, and runtime persistence in a real browser.
+5. Investigate five high-severity dependency audit findings and Supabase security advisor findings before production release.
+6. Keep the production branch untouched until all required gates have evidence and an explicit sign-off.
+
+The master baseline remains the controlling product/architecture contract; this report and the requirement matrix record evidence status, not permission to skip release gates.
+
+
+### Phase 3 — Specialist contract baseline (2026-10-09)
+- Added `docs/AI_WORKFORCE_SPECIALIST_CONTRACTS.md` defining the Master Agent's eight bounded capabilities, allowed/prohibited tools, evidence requirements, escalation rules, tenant context, and minimum contract tests.
+- The document explicitly distinguishes a contract specification from tested runtime behavior. The branch now includes deterministic capability selection, specialist-scoped tool allowlists, and selected capability IDs in the message trace; it does not yet constitute eight separate autonomous agents.
+- Next gate: obtain a successful build for the latest branch commit, then add/execute contract tests and adversarial tenant/tool-gating tests. Proceed to Business Brain verification/limits only after this gate is validated.

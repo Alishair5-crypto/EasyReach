@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
+import { annotateKnowledgeTrust } from "@/lib/ai/knowledge-trust";
 
 const EDIT_ROLES = new Set(["owner", "admin", "manager"]);
 const TYPES = new Set(["policy", "faq", "business", "shipping", "returns", "payment", "general"]);
@@ -17,7 +18,7 @@ export async function GET() {
       .eq("tenant_id", tenant.id)
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return NextResponse.json({ documents: data ?? [] });
+    return NextResponse.json({ documents: annotateKnowledgeTrust(data ?? []) });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "business_brain_load_failed" }, { status: 500 });
   }
@@ -46,20 +47,9 @@ export async function POST(req: Request) {
       verification_status: "pending",
       verified_at: null,
       verified_by: null,
-      last_synced_at: new Date().toISOString()
+      last_synced_at: null
     }).select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
     if (error) throw error;
-
-    const audit = await supabase.from("audit_logs").insert({
-      tenant_id: tenant.id,
-      actor_id: user.id,
-      action: "knowledge.created",
-      resource_type: "knowledge_document",
-      resource_id: data.id,
-      new_data: data,
-      reason: "Business Brain document created"
-    });
-    if (audit.error) throw audit.error;
     return NextResponse.json({ document: data }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "business_brain_create_failed" }, { status: 500 });
@@ -85,15 +75,10 @@ export async function PATCH(req: Request) {
       if (before.status !== "active") return NextResponse.json({ error: "only_active_knowledge_can_be_verified" }, { status: 409 });
       const patch = { verification_status: "verified", verified_at: new Date().toISOString(), verified_by: user.id };
       const { data, error } = await supabase.from("knowledge_documents").update(patch)
-        .eq("tenant_id", tenant.id).eq("id", id)
-        .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
+        .eq("tenant_id", tenant.id).eq("id", id).eq("status", "active")
+        .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").maybeSingle();
       if (error) throw error;
-      const audit = await supabase.from("audit_logs").insert({
-        tenant_id: tenant.id, actor_id: user.id, action: "knowledge.verified",
-        resource_type: "knowledge_document", resource_id: id, old_data: before, new_data: data,
-        reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : "Business Brain document verified"
-      });
-      if (audit.error) throw audit.error;
+      if (!data) return NextResponse.json({ error: "knowledge_state_changed_retry" }, { status: 409 });
       return NextResponse.json({ document: data });
     }
 
@@ -103,12 +88,6 @@ export async function PATCH(req: Request) {
         .eq("tenant_id", tenant.id).eq("id", id)
         .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
       if (error) throw error;
-      const audit = await supabase.from("audit_logs").insert({
-        tenant_id: tenant.id, actor_id: user.id, action: "knowledge.rejected",
-        resource_type: "knowledge_document", resource_id: id, old_data: before, new_data: data,
-        reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : "Business Brain document rejected"
-      });
-      if (audit.error) throw audit.error;
       return NextResponse.json({ document: data });
     }
 
@@ -122,30 +101,26 @@ export async function PATCH(req: Request) {
       patch.source_type = t; substantiveChange = true;
     }
     if ("source_url" in body) { patch.source_url = text(body.source_url, 2000) || null; substantiveChange = true; }
+    let statusChanged = false;
     if ("status" in body) {
       const s = text(body.status, 20);
       if (!["active", "archived", "pending", "failed"].includes(s)) return NextResponse.json({ error: "invalid_status" }, { status: 400 });
+      if (s !== before.status) statusChanged = true;
       patch.status = s;
     }
-    if (substantiveChange) {
+    if ("title" in body && !patch.title) return NextResponse.json({ error: "title_required" }, { status: 400 });
+    if ("content" in body && !patch.content) return NextResponse.json({ error: "content_required" }, { status: 400 });
+    if (substantiveChange || statusChanged) {
       patch.verification_status = "pending";
       patch.verified_at = null;
       patch.verified_by = null;
     }
     if (!Object.keys(patch).length) return NextResponse.json({ error: "no_changes" }, { status: 400 });
-    patch.last_synced_at = new Date().toISOString();
 
     const { data, error } = await supabase.from("knowledge_documents").update(patch)
       .eq("tenant_id", tenant.id).eq("id", id)
       .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
     if (error) throw error;
-
-    const audit = await supabase.from("audit_logs").insert({
-      tenant_id: tenant.id, actor_id: user.id, action: "knowledge.updated",
-      resource_type: "knowledge_document", resource_id: id, old_data: before, new_data: data,
-      reason: typeof body.reason === "string" ? body.reason.slice(0, 500) : "Business Brain document updated"
-    });
-    if (audit.error) throw audit.error;
     return NextResponse.json({ document: data });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "business_brain_update_failed" }, { status: 500 });

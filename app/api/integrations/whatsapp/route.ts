@@ -3,20 +3,11 @@ import { getTenantContext } from "@/lib/auth";
 import { requirePlanActive } from "@/lib/entitlements";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
 import { createPrivilegedClient } from "@/lib/integrations/server";
+import { isPublicHttpsUrl } from "@/lib/integrations/public-url";
 import { configureEvolutionWebhook, getEvolutionStatus, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
 
 function text(value: unknown, max = 5000) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 function validId(value: string) { return /^[0-9A-Za-z_-]{2,200}$/.test(value); }
-function publicHttpsUrl(value: string) {
-  try {
-    const url = new URL(value); if (url.protocol !== "https:") return false;
-    const host = url.hostname.toLowerCase();
-    if (host === "localhost" || host.endsWith(".local") || host === "127.0.0.1" || host === "::1") return false;
-    if (/^(10|127)\./.test(host) || /^192\.168\./.test(host) || /^169\.254\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false;
-    return true;
-  } catch { return false; }
-}
-
 export async function POST(req: Request) {
   try {
     const { tenant, user, membership, supabase } = await getTenantContext();
@@ -76,7 +67,7 @@ export async function POST(req: Request) {
     } else {
       const baseUrl = text(body.base_url, 2000).replace(/\/+$/, ""), apiKey = text(body.api_key, 5000), instanceName = text(body.instance_name, 200);
       const webhookSecret = text(body.webhook_secret, 500);
-      if (!baseUrl || !apiKey || !instanceName || !publicHttpsUrl(baseUrl) || !/^[A-Za-z0-9_-]{2,100}$/.test(instanceName) || !webhookSecret) return NextResponse.json({ error: "evolution_credentials_required" }, { status: 400 });
+      if (!baseUrl || !apiKey || !instanceName || !(await isPublicHttpsUrl(baseUrl)) || !/^[A-Za-z0-9_-]{2,100}$/.test(instanceName) || !webhookSecret) return NextResponse.json({ error: "evolution_credentials_required" }, { status: 400 });
       Object.assign(secret, { base_url: baseUrl, api_key: apiKey, instance_name: instanceName, webhook_secret: webhookSecret });
       externalId = instanceName; displayName = text(body.display_name, 200) || "WhatsApp QR";
     }
