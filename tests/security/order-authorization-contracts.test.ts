@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(resolve(process.cwd(), "supabase/migrations/20261010090000_harden_order_confirmation_mutations.sql"), "utf8");
+const orderDetailUi = readFileSync(resolve(process.cwd(), "app/orders/[id]/page.tsx"), "utf8");
 
 describe("order and AI confirmation authorization regression contracts", () => {
   it("removes direct authenticated DML from order and confirmation tables", () => {
@@ -44,5 +45,11 @@ describe("order and AI confirmation authorization regression contracts", () => {
 
   it("temporarily removes and restores the immutable trigger only for legacy hash backfill", () => {
     expect(migration).toMatch(/drop trigger if exists ai_action_confirmations_immutable[\s\S]*?update public\.ai_action_confirmations[\s\S]*?create trigger ai_action_confirmations_immutable/i);
+  });
+
+  it("does not allow dashboard controls to fabricate a successful payment", () => {
+    expect(migration).toContain("if p_payment_status = 'paid' then raise exception 'payment_verification_required'");
+    expect(orderDetailUi).not.toContain('order.payment_status==="unpaid"&&["pending","paid","failed"].includes(s)');
+    expect(orderDetailUi).not.toContain('order.payment_status==="pending"&&["paid","failed","unpaid"].includes(s)');
   });
 });
