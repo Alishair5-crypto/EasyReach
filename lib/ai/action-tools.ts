@@ -130,7 +130,8 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    if(items.some((x:any)=>!id(x.product_id)&&!id(x.variant_id)))return fail(name,"invalid_items","Each item needs a valid product_id or variant_id.");
    if(items.some((x:any)=>id(x.product_id)&&id(x.variant_id)))return fail(name,"invalid_items","Each item must use either product_id or variant_id, not both.");
    if(items.some((x:any)=>!Number.isInteger(Number(x.quantity))||Number(x.quantity)<=0||Number(x.quantity)>1000))return fail(name,"invalid_quantity","Invalid quantity.");
-   const confirmationTokenHash=text(a.confirmation_token_hash,128);\n   if(confirmationTokenHash && !/^[0-9a-f]{64}$/i.test(confirmationTokenHash))return fail(name,"invalid_confirmation_token","A valid server-issued confirmation token hash is required.");
+   const confirmationTokenHash=text(a.confirmation_token_hash,128);
+   if(confirmationTokenHash && !/^[0-9a-f]{64}$/i.test(confirmationTokenHash))return fail(name,"invalid_confirmation_token","A valid server-issued confirmation token hash is required.");
    if(!confirmationTokenHash)return fail(name,"confirmation_required","An explicit server-issued order confirmation is required.");
    const{data,error}=await s.rpc("execute_confirmed_order_atomic",{p_tenant_id:ctx.tenantId,p_token_hash:confirmationTokenHash});
    if(error)return fail(name,"order_confirmation_failed",error.message.includes("already_used")?"The confirmation has already been used.":error.message.includes("expired")?"The confirmation has expired.":error.message.includes("required")?"Explicit confirmation is required.":error.message.includes("integrity_failure")?"The confirmation integrity check failed.":"The confirmed order could not be created safely.");
