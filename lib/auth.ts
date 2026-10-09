@@ -1,4 +1,6 @@
-import {redirect} from "next/navigation";import {createClient} from "./supabase/server";
+import{redirect}from"next/navigation";import{cookies}from"next/headers";import{createClient}from"./supabase/server";
+const ACTIVE_TENANT_COOKIE="easyreach_tenant_id";
 export async function getUser(){const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();return{supabase,user}}
 export async function requireUser(){const {supabase,user}=await getUser();if(!user)redirect("/signin");return{supabase,user}}
-export async function getTenantContext(){const {supabase,user}=await requireUser();const {data:membership}=await supabase.from("tenant_members").select("tenant_id,role").eq("user_id",user.id).order("created_at",{ascending:true}).limit(1).maybeSingle();if(!membership)return{supabase,user,membership:null,tenant:null};const {data:tenant}=await supabase.from("tenants").select("*").eq("id",membership.tenant_id).maybeSingle();return{supabase,user,membership,tenant}}
+export async function getTenantContext(){const {supabase,user}=await requireUser();const jar=await cookies();const requestedTenant=jar.get(ACTIVE_TENANT_COOKIE)?.value?.trim();let query=supabase.from("tenant_members").select("tenant_id,role").eq("user_id",user.id);if(requestedTenant)query=query.eq("tenant_id",requestedTenant);else query=query.order("created_at",{ascending:true}).limit(1);const {data:membership}=await query.maybeSingle();if(!membership)return{supabase,user,membership:null,tenant:null};const {data:tenant}=await supabase.from("tenants").select("*").eq("id",membership.tenant_id).maybeSingle();return{supabase,user,membership,tenant}}
+export{ACTIVE_TENANT_COOKIE};

@@ -1,0 +1,249 @@
+"use client";
+import { useEffect, useState } from "react";
+
+type Agent = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: string;
+  language_mode: string;
+  system_prompt: string | null;
+  sales_rules: Record<string, unknown>;
+};
+
+const defaults = {
+  require_confirmation_for_orders: true,
+  require_confirmation_for_checkout: true,
+  allow_discounts: false,
+  discount_limit_percent: 0,
+  handoff_when_uncertain: true,
+};
+
+export default function AgentPage() {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [a, setA] = useState<Agent | null>(null);
+  const [r, setR] = useState({ connectedChannels: 0, products: 0, knowledge: 0 });
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const x = await fetch("/api/agents");
+    const d = await x.json();
+    if (x.ok) {
+      setAgents(d.agents ?? []);
+      setR(d.readiness ?? { connectedChannels: 0, products: 0, knowledge: 0 });
+      if (!a && d.agents?.[0]) setA(d.agents[0]);
+    } else {
+      setMsg(d.error ?? "Load failed");
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function create() {
+    setBusy(true);
+    const x = await fetch("/api/agents", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "EasyReach Sales Agent", language_mode: "auto", sales_rules: defaults }),
+    });
+    const d = await x.json();
+    setBusy(false);
+    if (!x.ok) {
+      setMsg(d.error ?? "Create failed");
+      return;
+    }
+    setAgents((v) => [...v, d.agent]);
+    setA(d.agent);
+  }
+
+  function up(k: string, v: unknown) {
+    if (a) setA({ ...a, [k]: v });
+  }
+
+  async function save(status?: string) {
+    if (!a) return;
+    setBusy(true);
+    setMsg("");
+    const x = await fetch("/api/agents", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...a, status: status ?? a.status, reason: "Workforce Control Center change" }),
+    });
+    const d = await x.json();
+    setBusy(false);
+    if (!x.ok) {
+      setMsg(d.blockers ? "Activation blocked: " + d.blockers.join(", ") : (d.error ?? "Save failed"));
+      return;
+    }
+    setA(d.agent);
+    setAgents((v) => v.map((i) => (i.id === d.agent.id ? d.agent : i)));
+    setMsg("Saved successfully");
+  }
+
+  const q = { ...defaults, ...(a?.sales_rules ?? {}) };
+
+  return (
+    <main className="app-shell">
+      <aside className="sidebar">
+        <a className="brand" href="/">EasyReach</a>
+        <div className="tenant-name">AI Workforce</div>
+        <nav>
+          <a href="/dashboard">Overview</a>
+          <a className="active" href="/agent">Agent</a>
+          <a href="/channels">Channels</a>
+          <a href="/inbox">Shared Inbox</a>
+          <a href="/orders">Orders</a>
+          <a href="/customers">Customers</a>
+        </nav>
+      </aside>
+
+      <section className="workspace">
+        <header className="workspace-head">
+          <div>
+            <div className="eyebrow">AI workforce control center</div>
+            <h1>Agent control</h1>
+            <p className="muted">Configure the business brain, sales policy and activation lifecycle.</p>
+          </div>
+          <span className="plan-badge">{a?.status ?? "draft"}</span>
+        </header>
+
+        <section className="metric-grid">
+          <div className="metric card"><span>Connected channels</span><strong>{r.connectedChannels}</strong></div>
+          <div className="metric card"><span>Catalog records</span><strong>{r.products}</strong></div>
+          <div className="metric card"><span>Knowledge sources</span><strong>{r.knowledge}</strong></div>
+          <div className="metric card"><span>Activation</span><strong>{a?.status === "active" ? "Live" : "Controlled"}</strong></div>
+        </section>
+
+        {msg && <div className={msg.startsWith("Saved") ? "success" : "error"} style={{ marginTop: 16 }}>{msg}</div>}
+
+        <section className="section">
+          <div className="section-head">
+            <h2>Agents</h2>
+            <button className="button" onClick={create} disabled={busy}>New agent</button>
+          </div>
+          <div className="grid">
+            {agents.map((x) => (
+              <button className="card" key={x.id} onClick={() => setA(x)} style={{ textAlign: "left", color: "inherit", cursor: "pointer" }}>
+                <strong>{x.name}</strong>
+                <p>{x.description || "No description yet."}</p>
+                <span className="status">{x.status}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {a && (
+          <>
+            <section className="section">
+              <div className="section-head">
+                <h2>Agent test bench</h2>
+                <span className="muted">Safe test mode · no WhatsApp message is sent</span>
+              </div>
+              <div className="card">
+                <textarea id="agent-test-message" placeholder="Ask the agent a real sales question…" style={{ minHeight: 120 }} />
+                <button
+                  className="button"
+                  disabled={busy || a.status !== "testing"}
+                  onClick={async () => {
+                    const el = document.getElementById("agent-test-message") as HTMLTextAreaElement | null;
+                    const message = el?.value.trim() ?? "";
+                    if (!message) {
+                      setMsg("Enter a test message first");
+                      return;
+                    }
+                    setBusy(true);
+                    setMsg("");
+                    try {
+                      const x = await fetch("/api/agents/test", {
+                        method: "POST",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ agent_id: a.id, message }),
+                      });
+                      const d = await x.json();
+                      if (!x.ok) throw new Error(d.error || "Test failed");
+                      if (el) el.value = "";
+                      setMsg("Test response: " + d.result.text);
+                    } catch (e) {
+                      setMsg(e instanceof Error ? e.message : "Test failed");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Run test
+                </button>
+                {a.status !== "testing" && <p className="muted">Move this agent to Testing before running the sandbox.</p>}
+              </div>
+            </section>
+
+            <section className="section">
+              <div className="section-head">
+                <h2>{a.name}</h2>
+                <span className={"status " + (a.status === "active" ? "good" : "")}>{a.status}</span>
+              </div>
+
+              <div className="card form-grid">
+                <label>Name<input value={a.name} onChange={(e) => up("name", e.target.value)} /></label>
+                <label>
+                  Language mode
+                  <select value={a.language_mode} onChange={(e) => up("language_mode", e.target.value)}>
+                    <option value="auto">Auto / mirror customer</option>
+                    <option value="english">English</option>
+                    <option value="urdu">Urdu</option>
+                    <option value="roman_urdu">Roman Urdu</option>
+                    <option value="mixed">Mixed</option>
+                  </select>
+                </label>
+                <label className="wide">Description<textarea value={a.description ?? ""} onChange={(e) => up("description", e.target.value)} /></label>
+                <label className="wide">Business system prompt<textarea value={a.system_prompt ?? ""} onChange={(e) => up("system_prompt", e.target.value)} placeholder="Define brand voice and approved selling behaviour." /></label>
+                <label>
+                  Order confirmation
+                  <select value={String(q.require_confirmation_for_orders)} onChange={(e) => up("sales_rules", { ...q, require_confirmation_for_orders: e.target.value === "true" })}>
+                    <option value="true">Always required</option>
+                    <option value="false">Configured automation</option>
+                  </select>
+                </label>
+                <label>
+                  Checkout confirmation
+                  <select value={String(q.require_confirmation_for_checkout)} onChange={(e) => up("sales_rules", { ...q, require_confirmation_for_checkout: e.target.value === "true" })}>
+                    <option value="true">Always required</option>
+                    <option value="false">Configured automation</option>
+                  </select>
+                </label>
+                <label>
+                  Discount policy
+                  <select value={q.allow_discounts ? "allowed" : "blocked"} onChange={(e) => up("sales_rules", { ...q, allow_discounts: e.target.value === "allowed" })}>
+                    <option value="blocked">Blocked</option>
+                    <option value="allowed">Allowed within limit</option>
+                  </select>
+                </label>
+                <label>
+                  Discount limit %
+                  <input type="number" min="0" max="100" value={Number(q.discount_limit_percent) || 0} onChange={(e) => up("sales_rules", { ...q, discount_limit_percent: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })} />
+                </label>
+                <label className="wide">
+                  Uncertainty handling
+                  <select value={String(q.handoff_when_uncertain)} onChange={(e) => up("sales_rules", { ...q, handoff_when_uncertain: e.target.value === "true" })}>
+                    <option value="true">Hand off when data is insufficient</option>
+                    <option value="false">Ask for missing information</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="actions">
+                <button className="button" onClick={() => save()} disabled={busy}>Save changes</button>
+                <button className="button secondary" onClick={() => save("testing")} disabled={busy}>Move to testing</button>
+                {a.status === "active"
+                  ? <button className="button secondary" onClick={() => save("paused")} disabled={busy}>Pause agent</button>
+                  : <button className="button" onClick={() => save("active")} disabled={busy}>Activate safely</button>}
+              </div>
+            </section>
+          </>
+        )}
+      </section>
+    </main>
+  );
+}

@@ -8,7 +8,7 @@ const clean=(v:string)=>v.replace(/[,%()]/g," ").trim().slice(0,120);
 
 export async function GET(req:Request){
   try{
-    const {supabase,tenant}=await getTenantContext();
+    const {supabase,tenant,user}=await getTenantContext();
     if(!tenant)return NextResponse.json({error:"workspace_required"},{status:400});
     const u=new URL(req.url),q=clean(u.searchParams.get("q")??""),status=u.searchParams.get("status")??"",priority=u.searchParams.get("priority")??"",channel=u.searchParams.get("channel")??"",assignment=u.searchParams.get("assignment")??"all";
     const limit=Math.min(50,Math.max(1,Number(u.searchParams.get("limit")??30)||30));
@@ -16,15 +16,17 @@ export async function GET(req:Request){
     if(status&&allowedStatuses.includes(status as typeof allowedStatuses[number]))query=query.eq("status",status);
     if(priority&&allowedPriorities.includes(priority as typeof allowedPriorities[number]))query=query.eq("priority",priority);
     if(channel&&allowedChannels.includes(channel as typeof allowedChannels[number]))query=query.eq("channel",channel);
-    if(assignment==="unassigned")query=query.is("assigned_to",null); else if(assignment==="mine")query=query.eq("assigned_to",(await getTenantContext()).user.id);
+    if(assignment==="unassigned")query=query.is("assigned_to",null); else if(assignment==="mine")query=query.eq("assigned_to",user.id);
     const {data:conversations,error}=await query;if(error)throw error;
     const rows=conversations??[], customerIds=rows.map(x=>x.customer_id).filter(Boolean) as string[], ids=rows.map(x=>x.id);
-    const [{data:customers},{data:members},{data:messages}]=await Promise.all([
-      customerIds.length?supabase.from("customers").select("id,name,phone,email,preferred_language,tags").eq("tenant_id",tenant.id).in("id",customerIds):Promise.resolve({data:[]}),
+    const [customerResult,memberResult,messageResult]=await Promise.all([
+      customerIds.length?supabase.from("customers").select("id,name,phone,email,preferred_language,tags").eq("tenant_id",tenant.id).in("id",customerIds):Promise.resolve({data:[],error:null}),
       supabase.from("tenant_members").select("user_id,role").eq("tenant_id",tenant.id),
-      ids.length?supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at").eq("tenant_id",tenant.id).in("conversation_id",ids).order("created_at",{ascending:false}):Promise.resolve({data:[]})
+      ids.length?supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at").eq("tenant_id",tenant.id).in("conversation_id",ids).order("created_at",{ascending:false}):Promise.resolve({data:[] as any[],error:null})
     ]);
-    const customerMap=new Map((customers??[]).map(x=>[x.id,x]));
+    if(customerResult.error||memberResult.error||messageResult.error)throw new Error("conversation_related_query_failed");
+    const customers=customerResult.data??[],members=memberResult.data??[],messages=messageResult.data??[];
+    const customerMap=new Map(customers.map(x=>[x.id,x]));
     const memberMap=new Map((members??[]).map(x=>[x.user_id,x]));
     const lastBy=new Map<string,any>(); for(const m of messages??[])if(!lastBy.has(m.conversation_id))lastBy.set(m.conversation_id,m);
     const unread=new Map<string,number>(); for(const m of messages??[])if(m.direction==="inbound"&&!m.read_at)unread.set(m.conversation_id,(unread.get(m.conversation_id)??0)+1);

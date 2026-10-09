@@ -27,11 +27,14 @@ export async function POST(req: Request) {
       return decryptSecret<Record<string, unknown>>(row.data.encrypted_payload);
     })());
 
+    const state = String((result as any)?.instance?.state ?? (result as any)?.state ?? (result as any)?.connectionState?.instance?.state ?? (result as any)?.connectionState?.state ?? "").toLowerCase();
+    const hasQr = Boolean((result as any)?.base64 || (result as any)?.qrcode?.base64 || (result as any)?.qr?.base64 || (result as any)?.code || (result as any)?.qrcode?.code || (result as any)?.qr?.code || (result as any)?.pairingCode);
+    const nextStatus = state === "open" || state === "connected" ? "connected" : hasQr ? "waiting_for_scan" : "preparing";
     await supabase.from("integrations").update({
-      status: "qr_ready", error_message: null, updated_at: new Date().toISOString()
+      status: nextStatus, error_message: null, updated_at: new Date().toISOString()
     }).eq("id", integration.id).eq("tenant_id", tenant.id);
 
-    return NextResponse.json({ integrationId, status: "qr_ready", providerResponse: result });
+    return NextResponse.json({ integrationId, status: nextStatus, providerResponse: result });
   } catch (e) {
     const message = e instanceof Error ? e.message : "whatsapp_qr_failed";
     return NextResponse.json({ error: message.startsWith("whatsapp_") || message.endsWith("_not_configured") ? message : "whatsapp_qr_failed" }, { status: 502 });
