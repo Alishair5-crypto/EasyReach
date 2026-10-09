@@ -38,7 +38,7 @@ describe("order and AI confirmation authorization regression contracts", () => {
 
   it("stores and verifies a deterministic hash for each confirmation payload", () => {
     expect(migration).toMatch(/add column if not exists payload_hash text/i);
-    expect(migration).toMatch(/payload_hash, token_hash, expires_at[\s\S]*?public\.digest\(p_payload::text, 'sha256'\)/i);
-    expect(migration).toMatch(/v_hash := encode\(public\.digest\(c\.payload::text, 'sha256'\), 'hex'\)/i);
+    expect(migration).toMatch(/payload_hash, token_hash, expires_at[\s\S]*?extensions\.digest\(p_payload::text, 'sha256'\)/i);
+    expect(migration).toMatch(/v_hash := encode\(extensions\.digest\(c\.payload::text, 'sha256'\), 'hex'\)/i);
   });
 });
