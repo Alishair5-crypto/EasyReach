@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
+}));
 import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, isSafeEvolutionBaseUrl, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
 
 const secret = {
