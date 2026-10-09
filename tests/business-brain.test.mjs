@@ -145,3 +145,13 @@ test("knowledge search detects conflicts before applying its response limit", ()
   assert.ok(retrieval < responseLimit, "trust and conflict annotation must run before limiting returned rows");
   assert.doesNotMatch(actions, /seen\.add\(x\.id\)\)\.slice\(0,20\)/);
 });
+
+test("verification transition is conditional and reports concurrent state changes", async () => {
+  const route = await readFile(new URL("../app/api/business-brain/route.ts", import.meta.url), "utf8");
+  const verifyBranch = route.split('if (body.action === "verify") {')[1]?.split('if (body.action === "reject") {')[0] ?? "";
+  assert.match(verifyBranch, /before\.status !== "active"/);
+  assert.match(verifyBranch, /\.eq\("tenant_id", tenant\.id\)\.eq\("id", id\)\.eq\("status", "active"\)/);
+  assert.match(verifyBranch, /\.maybeSingle\(\)/);
+  assert.match(verifyBranch, /if \(!data\).*knowledge_state_changed_retry/s);
+  assert.match(verifyBranch, /status: 409/);
+});

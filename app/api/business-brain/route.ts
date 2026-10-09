@@ -75,9 +75,10 @@ export async function PATCH(req: Request) {
       if (before.status !== "active") return NextResponse.json({ error: "only_active_knowledge_can_be_verified" }, { status: 409 });
       const patch = { verification_status: "verified", verified_at: new Date().toISOString(), verified_by: user.id };
       const { data, error } = await supabase.from("knowledge_documents").update(patch)
-        .eq("tenant_id", tenant.id).eq("id", id)
-        .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
+        .eq("tenant_id", tenant.id).eq("id", id).eq("status", "active")
+        .select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").maybeSingle();
       if (error) throw error;
+      if (!data) return NextResponse.json({ error: "knowledge_state_changed_retry" }, { status: 409 });
       return NextResponse.json({ document: data });
     }
 
