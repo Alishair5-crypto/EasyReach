@@ -84,7 +84,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
    let rows:any[]=[];
    for(const w of words){
     const safe=w.replace(/[%_,()]/g,"").slice(0,50);if(!safe)continue;
-    const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,last_synced_at").eq("tenant_id",ctx.tenantId).eq("status","active").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
+    const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,last_synced_at,verification_status,verified_at,updated_at").eq("tenant_id",ctx.tenantId).eq("status","active").eq("verification_status","verified").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
     if(error)throw error;rows.push(...(data??[]));
    }
    const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id)).slice(0,20);
