@@ -38,7 +38,7 @@ describe("Evolution API v2 QR flow", () => {
       }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getEvolutionQr(secret)).resolves.toMatchObject({ base64: "fresh-qr" });
+    await expect(getEvolutionQr(secret, publicResolver)).resolves.toMatchObject({ base64: "fresh-qr" });
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[1][0]).toBe("https://evolution.example/instance/create");
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({
@@ -53,7 +53,7 @@ describe("Evolution API v2 QR flow", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("unauthorized", { status: 401 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getEvolutionQr(secret)).rejects.toThrow("whatsapp_evolution_qr_failed");
+    await expect(getEvolutionQr(secret, publicResolver)).rejects.toThrow("whatsapp_evolution_qr_failed");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -75,7 +75,7 @@ describe("Evolution API v2 QR flow", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getEvolutionQr({ ...secret, api_key: "" })).rejects.toThrow("whatsapp_evolution_credentials_invalid");
+    await expect(getEvolutionQr({ ...secret, api_key: "" }, publicResolver)).rejects.toThrow("whatsapp_evolution_credentials_invalid");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
@@ -129,7 +129,7 @@ describe("Evolution webhook setup", () => {
   it("fails closed if Evolution rejects webhook registration", async () => {
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://easyreach.example");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("forbidden", { status: 403 })));
-    await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }))
+    await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }, publicResolver))
       .rejects.toThrow("whatsapp_evolution_webhook_config_failed");
   });
 });
