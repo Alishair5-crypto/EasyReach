@@ -90,5 +90,5 @@ The master baseline remains the controlling product/architecture contract; this 
 
 ### Phase 3 — Specialist contract baseline (2026-10-09)
 - Added `docs/AI_WORKFORCE_SPECIALIST_CONTRACTS.md` defining the Master Agent's eight bounded capabilities, allowed/prohibited tools, evidence requirements, escalation rules, tenant context, and minimum contract tests.
-- The document explicitly distinguishes a contract specification from implemented/tested runtime behavior. No claim is made that eight independently testable specialist modules are already active.
-- Next in the approved order: implement deterministic capability routing and per-capability tool enforcement; add contract tests; then proceed to Business Brain verification/limits only after this gate is validated.
+- The document explicitly distinguishes a contract specification from tested runtime behavior. The branch now includes deterministic capability selection, specialist-scoped tool allowlists, and selected capability IDs in the message trace; it does not yet constitute eight separate autonomous agents.
+- Next gate: obtain a successful build for the latest branch commit, then add/execute contract tests and adversarial tenant/tool-gating tests. Proceed to Business Brain verification/limits only after this gate is validated.
