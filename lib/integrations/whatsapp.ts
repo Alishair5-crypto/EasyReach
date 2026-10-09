@@ -5,6 +5,8 @@ import { getIntegrationSecret } from "./server";
 export type WhatsAppProvider = "whatsapp_meta" | "whatsapp_evolution";
 const graphVersion = () => process.env.META_GRAPH_API_VERSION ?? "v25.0";
 const stripTrailingSlashes = (value: string) => value.replace(/\/+$/, "");
+type DnsLookup = (hostname: string, options: { all: true; verbatim: true }) => Promise<Array<{ address: string; family: number }>>;
+
 function isPublicIpv4(address: string) {
   const octets = address.split(".").map(Number);
   if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
@@ -30,7 +32,7 @@ function isPublicIp(address: string) {
   return ip.startsWith("2") || ip.startsWith("3");
 }
 
-export async function isSafeEvolutionBaseUrl(value: string) {
+export async function isSafeEvolutionBaseUrl(value: string, resolver: DnsLookup = lookup) {
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return false;
@@ -38,16 +40,16 @@ export async function isSafeEvolutionBaseUrl(value: string) {
     if (!host || host === "localhost" || !host.includes(".") ||
         host.endsWith(".local") || host.endsWith(".localhost") ||
         host.endsWith(".internal") || host.endsWith(".test") || isIP(host)) return false;
-    const addresses = await lookup(host, { all: true, verbatim: true });
+    const addresses = await resolver(host, { all: true, verbatim: true });
     return addresses.length > 0 && addresses.every((entry) => isPublicIp(entry.address));
   } catch {
     return false;
   }
 }
 
-async function validatedEvolutionBaseUrl(secret: Record<string, unknown>) {
+async function validatedEvolutionBaseUrl(secret: Record<string, unknown>, resolver: DnsLookup = lookup) {
   const value = stripTrailingSlashes(requiredString(secret, "base_url"));
-  if (!value || !(await isSafeEvolutionBaseUrl(value))) {
+  if (!value || !(await isSafeEvolutionBaseUrl(value, resolver))) {
     throw new Error("whatsapp_evolution_base_url_invalid");
   }
   return value;
@@ -75,8 +77,8 @@ export async function subscribeMetaWaba(secret: Record<string, unknown>) {
   return { subscribed: true };
 }
 
-export async function getEvolutionStatus(secret: Record<string, unknown>) {
-  const baseUrl = await validatedEvolutionBaseUrl(secret);
+export async function getEvolutionStatus(secret: Record<string, unknown>, resolver?: DnsLookup) {
+  const baseUrl = await validatedEvolutionBaseUrl(secret, resolver);
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
@@ -106,7 +108,7 @@ export function normalizeEvolutionConnectionState(payload: Record<string, unknow
   return "preparing";
 }
 
-export async function getEvolutionQr(secret: Record<string, unknown>) {
+export async function getEvolutionQr(secret: Record<string, unknown>, resolver?: DnsLookup) {
   const baseUrl = await validatedEvolutionBaseUrl(secret);
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
@@ -155,7 +157,7 @@ export function getWhatsAppWebhookUrl() {
   return stripTrailingSlashes(base) + "/api/webhooks/whatsapp";
 }
 
-export async function configureEvolutionWebhook(secret: Record<string, unknown>) {
+export async function configureEvolutionWebhook(secret: Record<string, unknown>, resolver?: DnsLookup) {
   const baseUrl = await validatedEvolutionBaseUrl(secret);
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
