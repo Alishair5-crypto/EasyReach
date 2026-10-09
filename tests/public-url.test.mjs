@@ -33,7 +33,7 @@ test("Evolution base URL requires a public HTTPS hostname", () => {
   assert.equal(isPublicHttpsUrlSyntax("https://evolution.example.com"), true);
 });
 test("public-address classifier rejects common private, loopback, and reserved ranges", () => {
-  for (const address of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "100.64.0.1", "224.0.0.1", "::1", "fc00::1", "fe80::1", "ff02::1", "2001:db8::1"]) {
+  for (const address of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "100.64.0.1", "224.0.0.1", "::1", "fc00::1", "fe80::1", "ff02::1", "2001:db8::1", "::ffff:127.0.0.1", "::ffff:10.0.0.1", "100::1", "2002::1"]) {
     assert.equal(isPublicAddress(address), false, address);
   }
   assert.equal(isPublicAddress("8.8.8.8"), true);
