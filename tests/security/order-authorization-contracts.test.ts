@@ -30,4 +30,9 @@ describe("order and AI confirmation authorization regression contracts", () => {
   it("keeps the audit table non-mutable through direct update/delete grants", () => {
     expect(migration).toMatch(/revoke update, delete, truncate, references, trigger on table public\.audit_logs from authenticated/i);
   });
+
+  it("writes the order-created audit event inside the atomic order transaction", () => {
+    expect(migration).toMatch(/function public\.create_order_atomic[\s\S]*?insert into public\.audit_logs[\s\S]*?Atomic order creation with server-verified catalog and inventory/i);
+    expect(migration).toMatch(/set search_path = pg_catalog, public, pg_temp/i);
+  });
 });
