@@ -46,3 +46,30 @@ test("same-title records with conflicting content are flagged and ineligible", (
   assert.equal(rows[1].conflict_status, "possible_conflict");
   assert.equal(rows.every((row) => !row.authoritative_eligible), true);
 });
+
+
+test("freshness boundaries are inclusive at 30 and 180 days", () => {
+  const [externalBoundary, externalExpired, manualBoundary, manualExpired] = trust.annotateKnowledgeTrust([
+    { title: "External boundary", content: "Policy A", source_url: "https://shop.example/a", last_synced_at: new Date(now - 30 * day).toISOString() },
+    { title: "External expired", content: "Policy B", source_url: "https://shop.example/b", last_synced_at: new Date(now - 30 * day - 1).toISOString() },
+    { title: "Manual boundary", content: "Policy C", verified_at: new Date(now - 180 * day).toISOString() },
+    { title: "Manual expired", content: "Policy D", verified_at: new Date(now - 180 * day - 1).toISOString() },
+  ], now);
+  assert.equal(externalBoundary.freshness_status, "current");
+  assert.equal(externalExpired.freshness_status, "stale");
+  assert.equal(manualBoundary.freshness_status, "current");
+  assert.equal(manualExpired.freshness_status, "stale");
+});
+
+test("future-dated or malformed freshness evidence is unknown and ineligible", () => {
+  const [futureExternal, futureManual, malformed] = trust.annotateKnowledgeTrust([
+    { title: "Future sync", content: "Policy A", source_url: "https://shop.example/a", last_synced_at: new Date(now + day).toISOString() },
+    { title: "Future verification", content: "Policy B", verified_at: new Date(now + day).toISOString() },
+    { title: "Malformed timestamp", content: "Policy C", verified_at: "not-a-date" },
+  ], now);
+  for (const row of [futureExternal, futureManual, malformed]) {
+    assert.equal(row.freshness_status, "unknown");
+    assert.equal(row.authoritative_eligible, false);
+    assert.equal(row.trust_reason, "verification_timestamp_invalid");
+  }
+});
