@@ -33,7 +33,7 @@ export async function getEvolutionStatus(secret: Record<string, unknown>) {
 
   // Evolution API v2 exposes the state at /instance/connectionState/{instanceName}.
   const response = await fetch(`${baseUrl}/instance/connectionState/${encodeURIComponent(instance)}`, {
-    headers: { apikey: apiKey }, cache: "no-store",
+    headers: { apikey: apiKey }, cache: "no-store", redirect: "error",
   });
   if (!response.ok) throw new Error("whatsapp_evolution_status_failed");
   return await response.json() as Record<string, unknown>;
@@ -67,7 +67,7 @@ export async function getEvolutionQr(secret: Record<string, unknown>) {
   const connectUrl = `${baseUrl}/instance/connect/${instancePath}`;
 
   // Evolution API v2 uses GET /instance/connect/{instanceName}, not POST /instance/connect.
-  let response = await fetch(connectUrl, { method: "GET", headers, cache: "no-store" });
+  let response = await fetch(connectUrl, { method: "GET", headers, cache: "no-store", redirect: "error" });
 
   // A configured URL/key with a missing instance is recoverable: create that named
   // instance, then request its real QR. Do not create a duplicate for other errors.
@@ -81,9 +81,10 @@ export async function getEvolutionQr(secret: Record<string, unknown>) {
         qrcode: true,
       }),
       cache: "no-store",
+      redirect: "error",
     });
     if (!create.ok) throw new Error("whatsapp_evolution_instance_create_failed");
-    response = await fetch(connectUrl, { method: "GET", headers, cache: "no-store" });
+    response = await fetch(connectUrl, { method: "GET", headers, cache: "no-store", redirect: "error" });
   }
 
   if (!response.ok) throw new Error("whatsapp_evolution_qr_failed");
@@ -95,13 +96,41 @@ export async function getEvolutionQr(secret: Record<string, unknown>) {
   return payload;
 }
 
-function webhookUrl() {
+export function getWhatsAppWebhookUrl() {
   const configured = process.env.NEXT_PUBLIC_APP_URL;
   const productionDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   const deploymentDomain = process.env.VERCEL_URL;
   const base = configured || (productionDomain ? `https://${productionDomain}` : deploymentDomain ? `https://${deploymentDomain}` : "");
   if (!base) throw new Error("app_url_not_configured");
   return stripTrailingSlashes(base) + "/api/webhooks/whatsapp";
+}
+
+export async function configureEvolutionWebhook(secret: Record<string, unknown>) {
+  const baseUrl = stripTrailingSlashes(requiredString(secret, "base_url"));
+  const apiKey = requiredString(secret, "api_key");
+  const instance = requiredString(secret, "instance_name");
+  const webhookSecret = requiredString(secret, "webhook_secret");
+  if (!baseUrl || !apiKey || !instance || !webhookSecret) {
+    throw new Error("whatsapp_evolution_credentials_invalid");
+  }
+
+  const url = getWhatsAppWebhookUrl();
+  const response = await fetch(`${baseUrl}/webhook/set/${encodeURIComponent(instance)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: apiKey },
+    body: JSON.stringify({
+      enabled: true,
+      url,
+      webhookByEvents: false,
+      webhookBase64: false,
+      events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+      headers: { "x-easyreach-webhook-secret": webhookSecret },
+    }),
+    cache: "no-store",
+    redirect: "error",
+  });
+  if (!response.ok) throw new Error("whatsapp_evolution_webhook_config_failed");
+  return { configured: true, url, events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"] };
 }
 
 export async function exchangeMetaEmbeddedSignup(code: string, wabaId: string, phoneNumberId?: string) {
@@ -129,7 +158,7 @@ export async function exchangeMetaEmbeddedSignup(code: string, wabaId: string, p
   const wabaResponse = await fetch(`https://graph.facebook.com/${graphVersion()}/${encodeURIComponent(wabaId)}?fields=id,name`, { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" });
   if (!wabaResponse.ok) throw new Error("meta_embedded_signup_waba_verification_failed");
   const waba = await wabaResponse.json() as Record<string, unknown>;
-  return { accessToken, phone, waba, phoneNumberId: resolvedPhoneId, webhookUrl: webhookUrl() };
+  return { accessToken, phone, waba, phoneNumberId: resolvedPhoneId, webhookUrl: getWhatsAppWebhookUrl() };
 }
 
 export async function sendWhatsAppText(integrationId: string, to: string, text: string) {
@@ -149,7 +178,7 @@ export async function sendWhatsAppText(integrationId: string, to: string, text: 
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
-  const response = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, { method: "POST", headers: { "Content-Type": "application/json", apikey: apiKey }, body: JSON.stringify({ number: to, textMessage: { text } }), cache: "no-store" });
+  const response = await fetch(`${baseUrl}/message/sendText/${encodeURIComponent(instance)}`, { method: "POST", headers: { "Content-Type": "application/json", apikey: apiKey }, body: JSON.stringify({ number: to, textMessage: { text } }), cache: "no-store", redirect: "error" });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`whatsapp_evolution_send_failed:${response.status}`);
   return payload;
