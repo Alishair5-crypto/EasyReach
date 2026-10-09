@@ -29,3 +29,24 @@ test("verification lifecycle has controlled states and records verifier evidence
   assert.match(migration, /verified_by uuid references auth\.users\(id\)/);
   assert.match(migration, /knowledge_verified_tenant_idx/);
 });
+
+
+test("Business Brain edits and status transitions invalidate prior verification", async () => {
+  const route = await readFile(new URL("../app/api/business-brain/route.ts", import.meta.url), "utf8");
+  assert.match(route, /if \(substantiveChange \|\| statusChanged\)/);
+  assert.match(route, /if \(s !== before\.status\) statusChanged = true/);
+  assert.match(route, /patch\.verification_status = "pending"/);
+  assert.match(route, /patch\.verified_at = null/);
+  assert.match(route, /patch\.verified_by = null/);
+  assert.match(route, /title_required/);
+  assert.match(route, /content_required/);
+  assert.doesNotMatch(route, /patch\.last_synced_at = new Date\(\)\.toISOString\(\)/);
+});
+
+test("Business Brain verification actions are role-gated and tenant-scoped", async () => {
+  const route = await readFile(new URL("../app/api/business-brain/route.ts", import.meta.url), "utf8");
+  assert.match(route, /EDIT_ROLES\.has\(membership\.role\)/);
+  assert.match(route, /\.eq\("tenant_id", tenant\.id\)\.eq\("id", id\)/);
+  assert.match(route, /action: "knowledge\.verified"/);
+  assert.match(route, /action: "knowledge\.rejected"/);
+});
