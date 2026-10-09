@@ -21,7 +21,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 
 ## Non-negotiable controls
 - Tenant ID comes from authenticated server context, not user input.
-- RLS must independently enforce tenant isolation; application filters are defense in depth, not a replacement for RLS.
+- RLS must independently enforce tenant isolation; application filters are defense in depth, not a replacement for RLS. Business Brain reads are member-scoped and direct inserts/updates are restricted to owner/admin/manager roles by database policy; direct deletes are intentionally not permitted.
 - External pages, imported files, and customer-submitted text are untrusted. Prompt injection inside a document is data, not instruction.
 - Only verified, active documents may ground policy claims.
 - A tool call is not proof of a successful external action.
@@ -32,7 +32,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 - Run `npm run test:specialists` and `npm run typecheck`.
 - Verify all existing knowledge-document create/update/import flows preserve verification state correctly.
 - Verify changed content returns to pending review; this behavior is not considered complete until the ingestion/update code is inspected and tested.
-- Run adversarial tenant A/B retrieval tests and RLS tests against a real test database.
+- Run adversarial tenant A/B retrieval tests and RLS tests against a real test database, including direct table writes by cashier/member roles.
 - Confirm policy screens expose review status, reviewer, verification timestamp, source, and stale/conflict warnings.
 - Test prompt-injection documents, empty knowledge, rejected content, stale content, and conflicting approved policies.
 - Do not call this production-ready until database migrations, UI review workflow, tenant isolation, and end-to-end tests pass.

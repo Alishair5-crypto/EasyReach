@@ -50,3 +50,13 @@ test("Business Brain verification actions are role-gated and tenant-scoped", asy
   assert.match(route, /action: "knowledge\.verified"/);
   assert.match(route, /action: "knowledge\.rejected"/);
 });
+
+test("database write policies enforce Business Brain editor roles", async () => {
+  const rlsMigration = await readFile(new URL("../supabase/migrations/20261009090000_business_brain_write_role_rls.sql", import.meta.url), "utf8");
+  assert.match(rlsMigration, /role in \('owner', 'admin', 'manager'\)/);
+  assert.match(rlsMigration, /create policy knowledge_member_read[\s\S]*for select[\s\S]*private\.is_tenant_member\(tenant_id\)/);
+  assert.match(rlsMigration, /create policy knowledge_editor_insert[\s\S]*for insert[\s\S]*private\.is_tenant_knowledge_editor\(tenant_id\)/);
+  assert.match(rlsMigration, /create policy knowledge_editor_update[\s\S]*for update[\s\S]*using \(private\.is_tenant_knowledge_editor\(tenant_id\)\)[\s\S]*with check \(private\.is_tenant_knowledge_editor\(tenant_id\)\)/);
+  assert.match(rlsMigration, /drop policy if exists knowledge_member on public\.knowledge_documents/);
+  assert.match(rlsMigration, /Direct DELETE is intentionally not granted/);
+});
