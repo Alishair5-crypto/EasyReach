@@ -84,8 +84,8 @@ test("AI retrieval excludes stale, unknown-freshness, and conflicting knowledge"
   const actionTools = await readFile(new URL("../lib/ai/action-tools.ts", import.meta.url), "utf8");
   const orchestrator = await readFile(new URL("../lib/ai/orchestrator.ts", import.meta.url), "utf8");
   assert.match(trust, /authoritative_eligible: freshness_status === "current" && !conflict/);
-  assert.match(policyTools, /annotateKnowledgeTrust\(data\?\?\[\]\)\.filter\(row => row\.authoritative_eligible\)/);
-  assert.match(actionTools, /annotateKnowledgeTrust\(rows\)\.filter\(row => row\.authoritative_eligible\)/);
+  assert.match(policyTools, /annotateKnowledgeTrust\(data\?\?\[\]\)\.filter\(row=>row\.authoritative_eligible\)/);
+  assert.match(actionTools, /annotateKnowledgeTrust\(rows\)\.filter\(row=>row\.authoritative_eligible\)/);
   assert.match(orchestrator, /cannot confirm the current policy and offer human review/);
 });
 
