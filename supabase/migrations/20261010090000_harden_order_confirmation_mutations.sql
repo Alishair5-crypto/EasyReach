@@ -4,6 +4,16 @@
 -- before any production application.
 
 -- Only audited RPCs may mutate orders and confirmation state.
+-- The live schema has a non-null payload_hash column; the original checked-in
+-- migration omitted it and the original create RPC failed to populate it. Bring
+-- clean installs and existing databases to the same schema before replacing RPCs.
+create extension if not exists pgcrypto;
+alter table public.ai_action_confirmations add column if not exists payload_hash text;
+update public.ai_action_confirmations
+set payload_hash = encode(public.digest(payload::text, 'sha256'), 'hex')
+where payload_hash is null;
+alter table public.ai_action_confirmations alter column payload_hash set not null;
+
 revoke all privileges on table public.orders from anon, authenticated;
 revoke all privileges on table public.order_items from anon, authenticated;
 revoke all privileges on table public.ai_action_confirmations from anon, authenticated;
@@ -395,9 +405,11 @@ begin
   ) then raise exception 'agent_not_found'; end if;
 
   insert into public.ai_action_confirmations(
-    tenant_id, agent_id, conversation_id, customer_id, action_type, payload, token_hash, expires_at
+    tenant_id, agent_id, conversation_id, customer_id, action_type, payload,
+    payload_hash, token_hash, expires_at
   ) values (
-    p_tenant_id, p_agent_id, p_conversation_id, p_customer_id, 'create_order', p_payload, p_token_hash, p_expires_at
+    p_tenant_id, p_agent_id, p_conversation_id, p_customer_id, 'create_order',
+    p_payload, encode(public.digest(p_payload::text, 'sha256'), 'hex'), p_token_hash, p_expires_at
   ) returning id into confirmation_id;
 
   return jsonb_build_object('confirmation_id', confirmation_id, 'action_type', 'create_order', 'expires_at', p_expires_at);
