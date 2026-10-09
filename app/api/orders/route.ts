@@ -25,8 +25,10 @@ function safeOrderError(message: string) {
 
 export async function POST(req: Request) {
   try {
-    const { supabase, tenant, user } = await getTenantContext();
-    if (!tenant || !user) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+    const { supabase, tenant, user, membership } = await getTenantContext();
+    if (!tenant || !user || !membership) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+
+    if (!["owner", "admin", "manager", "sales"].includes(membership.role)) return NextResponse.json({ error: "not_authorized" }, { status: 403 });
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) {
