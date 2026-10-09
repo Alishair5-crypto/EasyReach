@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
+import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, isSafeEvolutionBaseUrl, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
 
 const secret = {
   base_url: "https://evolution.example",
@@ -128,5 +128,20 @@ describe("Evolution webhook setup", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("forbidden", { status: 403 })));
     await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }))
       .rejects.toThrow("whatsapp_evolution_webhook_config_failed");
+  });
+});
+
+describe("Evolution target validation", () => {
+  it.each([
+    "http://evolution.example",
+    "https://localhost",
+    "https://127.0.0.1",
+    "https://10.0.0.1",
+    "https://[::1]",
+    "https://evolution.local",
+    "https://user:password@evolution.example",
+    "https://evolution.example?token=secret",
+  ])("rejects unsafe provider URL %s before making a request", async (url) => {
+    await expect(isSafeEvolutionBaseUrl(url)).resolves.toBe(false);
   });
 });
