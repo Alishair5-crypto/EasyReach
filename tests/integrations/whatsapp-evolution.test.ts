@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("node:dns/promises", () => ({
-  lookup: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
-}));
 import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, isSafeEvolutionBaseUrl, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
+
+const publicResolver = async (_hostname: string, _options: { all: true; verbatim: true }) => [{ address: "93.184.216.34", family: 4 }];
 
 const secret = {
   base_url: "https://evolution.example",
@@ -21,7 +20,7 @@ describe("Evolution API v2 QR flow", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getEvolutionQr(secret)).resolves.toMatchObject({ base64: "abc", code: "pair-code" });
+    await expect(getEvolutionQr(secret, publicResolver)).resolves.toMatchObject({ base64: "abc", code: "pair-code" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(
       "https://evolution.example/instance/connect/easyreach-test",
@@ -65,7 +64,7 @@ describe("Evolution API v2 QR flow", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(getEvolutionStatus(secret)).resolves.toMatchObject({ instance: { state: "close" } });
+    await expect(getEvolutionStatus(secret, publicResolver)).resolves.toMatchObject({ instance: { state: "close" } });
     expect(fetchMock).toHaveBeenCalledWith(
       "https://evolution.example/instance/connectionState/easyreach-test",
       expect.objectContaining({ headers: expect.objectContaining({ apikey: "test-api-key" }) }),
@@ -105,7 +104,7 @@ describe("Evolution webhook setup", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }))
+    await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }, publicResolver))
       .resolves.toMatchObject({ configured: true, url: "https://easyreach.example/api/webhooks/whatsapp" });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -148,4 +147,9 @@ describe("Evolution target validation", () => {
   ])("rejects unsafe provider URL %s before making a request", async (url) => {
     await expect(isSafeEvolutionBaseUrl(url)).resolves.toBe(false);
   });
+
+  it("accepts a public DNS hostname when all resolved addresses are public", async () => {
+    await expect(isSafeEvolutionBaseUrl("https://evolution.example", publicResolver)).resolves.toBe(true);
+  });
+
 });
