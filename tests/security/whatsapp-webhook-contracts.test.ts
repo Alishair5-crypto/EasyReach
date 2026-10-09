@@ -29,14 +29,23 @@ describe("WhatsApp webhook security contracts", () => {
 
   it("uses a unique event receipt to detect duplicate deliveries", () => {
     expect(webhook).toContain('if(receiptError.code!=="23505")throw receiptError');
-    expect(webhook).toContain('if(existing?.status!=="failed")return jsonResponse({received:true,duplicate:true})');
+    expect(webhook).toContain('else if(existing.status==="processing")');
+    expect(webhook).toContain('if(!claimed)return jsonResponse({received:true,duplicate:true})');
     expect(webhook).toContain('.eq("id",receiptId!)');
     expect(webhook).toContain('const eventId=`${provider}:${sha256(rawBody)}`');
   });
   
   it("allows one retry to claim a previously failed receipt", () => {
-    expect(webhook).toContain('existing?.status!=="failed"');
+    expect(webhook).toContain('existing.status==="failed"');
     expect(webhook).toContain('.eq("status","failed").select("id").maybeSingle()');
-    expect(webhook).toContain('status:"processing",error_message:null,processed_at:null');
+    expect(webhook).toContain('processing_started_at:leaseNow,error_message:null,processed_at:null');
+  });
+
+  it("reclaims only stale processing receipts with a compare-and-set lease", () => {
+    expect(webhook).toContain('const staleBefore=Date.now()-5*60*1000');
+    expect(webhook).toContain('existing.processing_started_at??existing.received_at');
+    expect(webhook).toContain('.eq("status","processing")');
+    expect(webhook).toContain('.eq("processing_started_at",existing.processing_started_at)');
+    expect(webhook).toContain('.is("processing_started_at",null)');
   });
 });
