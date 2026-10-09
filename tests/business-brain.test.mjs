@@ -159,10 +159,10 @@ test("verification transition is conditional and reports concurrent state change
 
 test("Business Brain tenant ownership is immutable at the database layer", async () => {
   const tenantMigration = await readFile(new URL("../supabase/migrations/20261009101725_business_brain_immutable_tenant.sql", import.meta.url), "utf8");
-  assert.match(tenantMigration, /create or replace function private\\.prevent_knowledge_tenant_reassignment\\(\\)/);
-  assert.match(tenantMigration, /old\\.tenant_id is distinct from new\\.tenant_id/);
+  assert.match(tenantMigration, /create or replace function private\.prevent_knowledge_tenant_reassignment\(\)/);
+  assert.match(tenantMigration, /old\.tenant_id is distinct from new\.tenant_id/);
   assert.match(tenantMigration, /raise exception 'knowledge_document_tenant_immutable'/);
   assert.match(tenantMigration, /using errcode = '42501'/);
-  assert.match(tenantMigration, /before update of tenant_id on public\\.knowledge_documents/);
+  assert.match(tenantMigration, /before update of tenant_id on public\.knowledge_documents/);
   assert.doesNotMatch(tenantMigration, /security definer/i);
 });
