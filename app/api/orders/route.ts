@@ -76,29 +76,6 @@ export async function POST(req: Request) {
     if (readError) return NextResponse.json({ error: "order_read_failed" }, { status: 500 });
     if (!order) return NextResponse.json({ error: "order_read_failed" }, { status: 500 });
 
-    // The RPC is idempotent. Avoid duplicating its audit event when a client retries.
-    const { data: existingAudit, error: auditReadError } = await supabase.from("audit_logs")
-      .select("id")
-      .eq("tenant_id", tenant.id)
-      .eq("resource_type", "order")
-      .eq("resource_id", orderId)
-      .eq("action", "order_created")
-      .limit(1)
-      .maybeSingle();
-    if (auditReadError) return NextResponse.json({ error: "order_audit_failed" }, { status: 500 });
-    if (!existingAudit) {
-      const { error: auditError } = await supabase.from("audit_logs").insert({
-        tenant_id: tenant.id,
-        actor_id: user.id,
-        action: "order_created",
-        resource_type: "order",
-        resource_id: orderId,
-        new_data: order,
-        reason: "Verified atomic order action",
-      });
-      if (auditError) return NextResponse.json({ error: "order_audit_failed" }, { status: 500 });
-    }
-
     return NextResponse.json({ order }, { status: 201, headers: { "Idempotency-Key": rawKey } });
   } catch {
     return NextResponse.json({ error: "order_creation_failed" }, { status: 500 });
