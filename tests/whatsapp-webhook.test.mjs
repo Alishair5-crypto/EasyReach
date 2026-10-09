@@ -14,3 +14,19 @@ test("failed WhatsApp webhook receipts can be reclaimed once for retry", () => {
   assert.match(source, /if\(!claimed\)return jsonResponse\(\{received:true,duplicate:true,status:"processing"\}\)/);
   assert.match(source, /status:"failed",error_message:message,processed_at:new Date\(\)\.toISOString\(\)/);
 });
+
+test("critical WhatsApp webhook database writes propagate failures", () => {
+  assert.match(source, /function assertDbWrite\(error:unknown,operation:string\)/);
+  assert.match(source, /if\(identityLookupError\)throw identityLookupError/);
+  assert.match(source, /customer_identity_upsert_failed/);
+  assert.match(source, /customer_update_failed/);
+  assert.match(source, /integration_status_update_failed/);
+  assert.match(source, /integration_connection_event_update_failed/);
+  assert.match(source, /message_delivery_status_update_failed/);
+  assert.match(source, /webhook_receipt_completion_failed/);
+});
+
+test("webhook completion is not acknowledged if receipt persistence fails", () => {
+  assert.match(source, /assertDbWrite\(\(await admin\.from\("webhook_events"\)\.update\(\{status:"processed"/);
+  assert.match(source, /catch\(error\)\{if\(admin&&receiptId\)/);
+});
