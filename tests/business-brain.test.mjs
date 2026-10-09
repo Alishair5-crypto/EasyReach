@@ -77,3 +77,20 @@ test("Business Brain audit records share the document transaction", async () => 
   assert.match(auditMigration, /insert into public\.audit_logs/);
   assert.match(auditMigration, /actor_id, action, resource_type, resource_id, old_data, new_data, reason/);
 });
+
+test("AI retrieval excludes stale, unknown-freshness, and conflicting knowledge", async () => {
+  const trust = await readFile(new URL("../lib/ai/knowledge-trust.ts", import.meta.url), "utf8");
+  const policyTools = await readFile(new URL("../lib/ai/tools.ts", import.meta.url), "utf8");
+  const actionTools = await readFile(new URL("../lib/ai/action-tools.ts", import.meta.url), "utf8");
+  const orchestrator = await readFile(new URL("../lib/ai/orchestrator.ts", import.meta.url), "utf8");
+  assert.match(trust, /authoritative_eligible: freshness_status === "current" && !conflict/);
+  assert.match(policyTools, /annotateKnowledgeTrust\(data\?\?\[\]\)\.filter\(row => row\.authoritative_eligible\)/);
+  assert.match(actionTools, /annotateKnowledgeTrust\(rows\)\.filter\(row => row\.authoritative_eligible\)/);
+  assert.match(orchestrator, /cannot confirm the current policy and offer human review/);
+});
+
+test("manual Business Brain entry does not claim an external sync occurred", async () => {
+  const route = await readFile(new URL("../app/api/business-brain/route.ts", import.meta.url), "utf8");
+  assert.match(route, /last_synced_at: null/);
+  assert.match(route, /annotateKnowledgeTrust\(data \?\? \[\]\)/);
+});

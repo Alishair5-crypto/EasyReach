@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
+import { annotateKnowledgeTrust } from "@/lib/ai/knowledge-trust";
 
 const EDIT_ROLES = new Set(["owner", "admin", "manager"]);
 const TYPES = new Set(["policy", "faq", "business", "shipping", "returns", "payment", "general"]);
@@ -17,7 +18,7 @@ export async function GET() {
       .eq("tenant_id", tenant.id)
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return NextResponse.json({ documents: data ?? [] });
+    return NextResponse.json({ documents: annotateKnowledgeTrust(data ?? []) });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "business_brain_load_failed" }, { status: 500 });
   }
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       verification_status: "pending",
       verified_at: null,
       verified_by: null,
-      last_synced_at: new Date().toISOString()
+      last_synced_at: null
     }).select("id,title,source_type,source_url,content,status,verification_status,verified_at,verified_by,last_synced_at,created_at").single();
     if (error) throw error;
     return NextResponse.json({ document: data }, { status: 201 });

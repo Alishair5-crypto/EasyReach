@@ -88,7 +88,7 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
     if(error)throw error;rows.push(...(data??[]));
    }
    const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id)).slice(0,20);
-   return{ok:true,tool:name,data:annotateKnowledgeTrust(rows)};
+   return{ok:true,tool:name,data:annotateKnowledgeTrust(rows).filter(row=>row.authoritative_eligible)};
   }
 
   if(name==="get_business_policy"){
