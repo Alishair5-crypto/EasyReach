@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import ts from "typescript";
 
 const tools = await readFile(new URL("../lib/ai/tools.ts", import.meta.url), "utf8");
 const actions = await readFile(new URL("../lib/ai/action-tools.ts", import.meta.url), "utf8");
@@ -93,4 +94,44 @@ test("manual Business Brain entry does not claim an external sync occurred", asy
   const route = await readFile(new URL("../app/api/business-brain/route.ts", import.meta.url), "utf8");
   assert.match(route, /last_synced_at: null/);
   assert.match(route, /annotateKnowledgeTrust\(data \?\? \[\]\)/);
+});
+
+
+test("freshness requires an actual sync timestamp for URL-backed sources", async () => {
+  const source = await readFile(new URL("../lib/ai/knowledge-trust.ts", import.meta.url), "utf8");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const trust = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
+  const now = Date.parse("2026-10-09T00:00:00.000Z");
+  const [noSync, freshSync, staleSync, manual] = trust.annotateKnowledgeTrust([
+    { title: "Shipping", content: "Ships in 3 days", source_url: "https://shop.example/policy", last_synced_at: null, verified_at: "2026-10-08T00:00:00.000Z" },
+    { title: "Returns", content: "Returns within 7 days", source_url: "https://shop.example/returns", last_synced_at: "2026-10-01T00:00:00.000Z", verified_at: "2026-10-01T00:00:00.000Z" },
+    { title: "Warranty", content: "One year", source_url: "https://shop.example/warranty", last_synced_at: "2026-08-01T00:00:00.000Z", verified_at: "2026-10-08T00:00:00.000Z" },
+    { title: "Opening hours", content: "Open 9 to 5", source_url: null, last_synced_at: null, verified_at: "2026-10-08T00:00:00.000Z" },
+  ], now);
+  assert.equal(noSync.freshness_status, "unknown");
+  assert.equal(noSync.authoritative_eligible, false);
+  assert.equal(freshSync.freshness_status, "current");
+  assert.equal(freshSync.authoritative_eligible, true);
+  assert.equal(staleSync.freshness_status, "stale");
+  assert.equal(staleSync.authoritative_eligible, false);
+  assert.equal(manual.freshness_status, "current");
+  assert.equal(manual.authoritative_eligible, true);
+});
+
+test("same-title conflicting verified knowledge is never authoritative", async () => {
+  const source = await readFile(new URL("../lib/ai/knowledge-trust.ts", import.meta.url), "utf8");
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const trust = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
+  const now = Date.parse("2026-10-09T00:00:00.000Z");
+  const rows = trust.annotateKnowledgeTrust([
+    { title: "Return Policy", content: "Returns accepted within 7 days", source_url: null, verified_at: "2026-10-08T00:00:00.000Z" },
+    { title: " return   policy ", content: "All sales are final", source_url: null, verified_at: "2026-10-08T00:00:00.000Z" },
+  ], now);
+  assert.equal(rows.length, 2);
+  assert.ok(rows.every((row) => row.conflict_status === "possible_conflict"));
+  assert.ok(rows.every((row) => row.authoritative_eligible === false));
 });

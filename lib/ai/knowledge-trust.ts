@@ -35,7 +35,7 @@ export function annotateKnowledgeTrust<T extends KnowledgeTrustInput>(rows: T[],
 
   return rows.map((row) => {
     const hasExternalSource = Boolean(row.source_url?.trim());
-    const timestamp = hasExternalSource ? (row.last_synced_at ?? row.verified_at) : row.verified_at;
+    const timestamp = hasExternalSource ? row.last_synced_at : row.verified_at;
     const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
     const validTimestamp = Number.isFinite(parsed);
     const ageMs = validTimestamp ? Math.max(0, now - parsed) : null;
