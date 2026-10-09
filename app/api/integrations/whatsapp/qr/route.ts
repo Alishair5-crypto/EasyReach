@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
-import { createPrivilegedClient } from "@/lib/integrations/server";
-import { getEvolutionQr } from "@/lib/integrations/whatsapp";
+import { getIntegrationSecret } from "@/lib/integrations/server";
+import { configureEvolutionWebhook, getEvolutionQr } from "@/lib/integrations/whatsapp";
 
 export async function POST(req: Request) {
   try {
@@ -18,18 +18,19 @@ export async function POST(req: Request) {
     if (error) throw error;
     if (!integration || integration.kind !== "whatsapp_evolution") return NextResponse.json({ error: "evolution_integration_not_found" }, { status: 404 });
 
-    const admin = createPrivilegedClient();
-    const result = await getEvolutionQr(await (async () => {
-      const row = await admin.from("integration_secrets").select("encrypted_payload").eq("integration_id", integration.id).maybeSingle();
-      if (row.error) throw row.error;
-      if (!row.data) throw new Error("integration_secret_missing");
-      const { decryptSecret } = await import("@/lib/integrations/secrets");
-      return decryptSecret<Record<string, unknown>>(row.data.encrypted_payload);
-    })());
+    const { provider, secret } = await getIntegrationSecret(integration.id);
+    if (provider !== "whatsapp_evolution") {
+      return NextResponse.json({ error: "evolution_integration_not_found" }, { status: 404 });
+    }
+    const result = await getEvolutionQr(secret);
+    await configureEvolutionWebhook(secret);
 
-    await supabase.from("integrations").update({
-      status: "qr_ready", error_message: null, updated_at: new Date().toISOString()
+    const { error: updateError } = await supabase.from("integrations").update({
+      status: "qr_ready",
+      error_message: null,
+      updated_at: new Date().toISOString(),
     }).eq("id", integration.id).eq("tenant_id", tenant.id);
+    if (updateError) throw updateError;
 
     return NextResponse.json({ integrationId, status: "qr_ready", providerResponse: result });
   } catch (e) {
