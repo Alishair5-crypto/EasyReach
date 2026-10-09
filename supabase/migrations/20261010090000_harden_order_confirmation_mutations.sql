@@ -9,10 +9,16 @@
 -- clean installs and existing databases to the same schema before replacing RPCs.
 create extension if not exists pgcrypto with schema extensions;
 alter table public.ai_action_confirmations add column if not exists payload_hash text;
+-- Temporarily remove the immutable-row trigger so legacy rows can be backfilled
+-- once. It is restored before the migration completes.
+drop trigger if exists ai_action_confirmations_immutable on public.ai_action_confirmations;
 update public.ai_action_confirmations
 set payload_hash = encode(extensions.digest(payload::text, 'sha256'), 'hex')
 where payload_hash is null;
 alter table public.ai_action_confirmations alter column payload_hash set not null;
+create trigger ai_action_confirmations_immutable
+before update on public.ai_action_confirmations
+for each row execute function public.ai_action_confirmations_immutable_guard();
 
 revoke all privileges on table public.orders from anon, authenticated;
 revoke all privileges on table public.order_items from anon, authenticated;
