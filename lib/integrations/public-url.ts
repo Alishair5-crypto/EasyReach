@@ -34,7 +34,7 @@ function ipv6Number(address: string): bigint | null {
   const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
   const groups = halves.length === 2 ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right] : left;
   if (groups.length !== 8 || groups.some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
-  return groups.reduce((value, part) => (value << 16n) | BigInt(parseInt(part, 16)), 0n);
+  return groups.reduce((value, part) => (value << BigInt(16)) | BigInt(parseInt(part, 16)), BigInt(0));
 }
 function ipv6In(value: bigint, network: bigint, prefix: number) {
   const shift = BigInt(128 - prefix);
