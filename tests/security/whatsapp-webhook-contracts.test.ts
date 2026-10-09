@@ -31,4 +31,10 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).toContain('if(receiptError.code==="23505")return jsonResponse({received:true,duplicate:true})');
     expect(webhook).toContain('const eventId=`${provider}:${sha256(rawBody)}`');
   });
+  
+  it("allows one retry to claim a previously failed receipt", () => {
+    expect(webhook).toContain('existing?.status!=="failed"');
+    expect(webhook).toContain('.eq("status","failed").select("id").maybeSingle()');
+    expect(webhook).toContain('status:"processing",error_message:null,processed_at:null');
+  });
 });
