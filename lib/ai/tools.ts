@@ -13,4 +13,4 @@ if(budget!==null){const{data}=await s.from("products").select("id,name,descripti
 return[]
 }
 export async function getProductVariants(tenantId:string,productIds:string[],db?:Db){if(!productIds.length)return[];const s=db??await createClient();const{data}=await s.from("product_variants").select("id,product_id,sku,name,price,sale_price,inventory_quantity,availability,attributes").eq("tenant_id",tenantId).in("product_id",productIds).limit(100);return data??[]}
-export async function getBusinessPolicy(tenantId:string,db?:Db){const s=db??await createClient();const{data}=await s.from("knowledge_documents").select("title,content").eq("tenant_id",tenantId).eq("source_type","policy").eq("status","active").limit(20);return data??[]}
+export async function getBusinessPolicy(tenantId:string,db?:Db){const s=db??await createClient();const{data}=await s.from("knowledge_documents").select("title,content,verification_status,verified_at,last_synced_at,updated_at").eq("tenant_id",tenantId).eq("source_type","policy").eq("status","active").eq("verification_status","verified").limit(20);return data??[]}
