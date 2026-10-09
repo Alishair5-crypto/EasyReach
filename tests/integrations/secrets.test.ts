@@ -5,7 +5,7 @@ import {
   hmacSha256Hex,
   sha256,
   timingSafeEqualHex,
-} from "../lib/integrations/secrets";
+} from "../../lib/integrations/secrets";
 
 const originalKey = process.env.INTEGRATION_ENCRYPTION_KEY;
 const validKey = "11".repeat(32);
