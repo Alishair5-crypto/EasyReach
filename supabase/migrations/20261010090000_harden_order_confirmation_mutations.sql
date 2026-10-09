@@ -7,13 +7,52 @@
 -- The live schema has a non-null payload_hash column; the original checked-in
 -- migration omitted it and the original create RPC failed to populate it. Bring
 -- clean installs and existing databases to the same schema before replacing RPCs.
-create extension if not exists pgcrypto with schema extensions;
+create extension if not exists pgcrypto;
 alter table public.ai_action_confirmations add column if not exists payload_hash text;
+
+-- pgcrypto has historically lived in either public or extensions in Supabase
+-- projects. Resolve the installed schema explicitly without moving the extension.
+create or replace function private.sha256_text(p_value text)
+returns text
+language plpgsql
+immutable
+set search_path = pg_catalog, public, extensions, pg_temp
+as $function$
+begin
+  if to_regprocedure('extensions.digest(text,text)') is not null then
+    return encode(extensions.digest(p_value, 'sha256'), 'hex');
+  end if;
+  return encode(public.digest(p_value, 'sha256'), 'hex');
+end
+$function$;
+revoke all on function private.sha256_text(text) from public, anon, authenticated;
+
+create or replace function public.ai_action_confirmations_immutable_guard()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public, pg_temp
+as $function$
+begin
+  if new.tenant_id is distinct from old.tenant_id
+     or new.agent_id is distinct from old.agent_id
+     or new.conversation_id is distinct from old.conversation_id
+     or new.customer_id is distinct from old.customer_id
+     or new.action_type is distinct from old.action_type
+     or new.payload is distinct from old.payload
+     or new.payload_hash is distinct from old.payload_hash
+     or new.token_hash is distinct from old.token_hash
+     or new.expires_at is distinct from old.expires_at
+     or new.created_at is distinct from old.created_at then
+    raise exception 'confirmation_immutable';
+  end if;
+  return new;
+end
+$function$;
 -- Temporarily remove the immutable-row trigger so legacy rows can be backfilled
 -- once. It is restored before the migration completes.
 drop trigger if exists ai_action_confirmations_immutable on public.ai_action_confirmations;
 update public.ai_action_confirmations
-set payload_hash = encode(extensions.digest(payload::text, 'sha256'), 'hex')
+set payload_hash = private.sha256_text(payload::text)
 where payload_hash is null;
 alter table public.ai_action_confirmations alter column payload_hash set not null;
 create trigger ai_action_confirmations_immutable
@@ -198,7 +237,7 @@ begin
   if c.confirmed_at is null then raise exception 'confirmation_required'; end if;
   if c.expires_at <= now() then raise exception 'confirmation_expired'; end if;
 
-  v_hash := encode(extensions.digest(c.payload::text, 'sha256'), 'hex');
+  v_hash := private.sha256_text(c.payload::text);
   if v_hash <> c.payload_hash then raise exception 'confirmation_integrity_failure'; end if;
   v_key := 'ai-confirmation:' || c.id::text;
   v_order := public.create_order_atomic(
@@ -415,7 +454,7 @@ begin
     payload_hash, token_hash, expires_at
   ) values (
     p_tenant_id, p_agent_id, p_conversation_id, p_customer_id, 'create_order',
-    p_payload, encode(extensions.digest(p_payload::text, 'sha256'), 'hex'), p_token_hash, p_expires_at
+    p_payload, private.sha256_text(p_payload::text), p_token_hash, p_expires_at
   ) returning id into confirmation_id;
 
   return jsonb_build_object('confirmation_id', confirmation_id, 'action_type', 'create_order', 'expires_at', p_expires_at);
