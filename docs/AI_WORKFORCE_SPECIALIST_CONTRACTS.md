@@ -186,5 +186,5 @@ For each S1–S8, automated tests must cover:
 ## 6. Implementation and sign-off gates
 
 - This document defines contracts; it does not assert that eight separately testable specialist modules already exist.
-- Current runtime has a Master orchestrator and a governed tool layer. Specialist routing, per-capability tool enforcement, trace persistence, and contract test coverage must be implemented and reviewed before the AI Workforce row can be marked TESTED or SIGNED OFF.
+- Current branch now contains deterministic capability selection (`lib/ai/specialists.ts`), specialist-scoped tool allowlists in the Master orchestrator, and selected capability IDs in the persisted message trace. These changes are not yet marked TESTED until the current branch's Vercel build succeeds and runtime/contract tests verify classification, tool gating, tenant isolation, and failure behavior.
 - No production promotion until current-branch preview build, runtime smoke tests, tenant-isolation tests, database/migration checks, and relevant provider E2E tests pass.
