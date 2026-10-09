@@ -48,4 +48,10 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).toContain('.eq("processing_started_at",existing.processing_started_at)');
     expect(webhook).toContain('.is("processing_started_at",null)');
   });
+
+  it("stores a redacted webhook receipt rather than the raw provider payload", () => {
+    expect(webhook).toContain('payload:{object:body.object??null,event_type:');
+    expect(webhook).toContain('signature_verified:true},signature_verified:true');
+    expect(webhook).not.toContain('payload:body,signature_verified:true');
+  });
 });
