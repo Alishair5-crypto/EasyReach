@@ -122,18 +122,21 @@ export async function PATCH(req: Request) {
       patch.source_type = t; substantiveChange = true;
     }
     if ("source_url" in body) { patch.source_url = text(body.source_url, 2000) || null; substantiveChange = true; }
+    let statusChanged = false;
     if ("status" in body) {
       const s = text(body.status, 20);
       if (!["active", "archived", "pending", "failed"].includes(s)) return NextResponse.json({ error: "invalid_status" }, { status: 400 });
+      if (s !== before.status) statusChanged = true;
       patch.status = s;
     }
-    if (substantiveChange) {
+    if ("title" in body && !patch.title) return NextResponse.json({ error: "title_required" }, { status: 400 });
+    if ("content" in body && !patch.content) return NextResponse.json({ error: "content_required" }, { status: 400 });
+    if (substantiveChange || statusChanged) {
       patch.verification_status = "pending";
       patch.verified_at = null;
       patch.verified_by = null;
     }
     if (!Object.keys(patch).length) return NextResponse.json({ error: "no_changes" }, { status: 400 });
-    patch.last_synced_at = new Date().toISOString();
 
     const { data, error } = await supabase.from("knowledge_documents").update(patch)
       .eq("tenant_id", tenant.id).eq("id", id)
