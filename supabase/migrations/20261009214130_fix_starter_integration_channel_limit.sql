@@ -24,9 +24,12 @@ begin
   if v_metric is null then return NEW; end if;
 
   -- Pre-created "not connected" hub entries are not active channel usage.
-  if TG_TABLE_NAME = 'integrations'
-     and coalesce(NEW.status, '') not in ('connected', 'connecting', 'pending') then
-    return NEW;
+  -- Keep table-specific record-field access in a nested branch. The shared
+  -- trigger function also runs on tables whose NEW record has no status field.
+  if TG_TABLE_NAME = 'integrations' then
+    if coalesce(NEW.status, '') not in ('connected', 'connecting', 'pending') then
+      return NEW;
+    end if;
   end if;
 
   select sub.status, (pl.limits ->> v_metric)::bigint
