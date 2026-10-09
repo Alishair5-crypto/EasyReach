@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getEvolutionQr, getEvolutionStatus, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
+import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, normalizeEvolutionConnectionState } from "../../lib/integrations/whatsapp";
 
 const secret = {
   base_url: "https://evolution.example",
@@ -7,7 +7,7 @@ const secret = {
   instance_name: "easyreach-test",
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("Evolution API v2 QR flow", () => {
   it("requests the real QR from the v2 GET connect endpoint", async () => {
@@ -89,5 +89,44 @@ describe("Evolution connection-state normalization", () => {
     [{}, "preparing"],
   ])("normalizes provider payload %j without false connected claims", (payload, expected) => {
     expect(normalizeEvolutionConnectionState(payload as Record<string, unknown>)).toBe(expected);
+  });
+});
+
+describe("Evolution webhook setup", () => {
+  it("registers the public webhook with the tenant-specific shared secret and required events", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://easyreach.example");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ webhook: { enabled: true } }), {
+      status: 201,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }))
+      .resolves.toMatchObject({ configured: true, url: "https://easyreach.example/api/webhooks/whatsapp" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://evolution.example/webhook/set/easyreach-test",
+      expect.objectContaining({
+        method: "POST",
+        redirect: "error",
+        headers: expect.objectContaining({ apikey: "test-api-key" }),
+      }),
+    );
+    const payload = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(payload).toMatchObject({
+      enabled: true,
+      url: "https://easyreach.example/api/webhooks/whatsapp",
+      webhookByEvents: false,
+      webhookBase64: false,
+      events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"],
+      headers: { "x-easyreach-webhook-secret": "tenant-webhook-secret" },
+    });
+  });
+
+  it("fails closed if Evolution rejects webhook registration", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://easyreach.example");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("forbidden", { status: 403 })));
+    await expect(configureEvolutionWebhook({ ...secret, webhook_secret: "tenant-webhook-secret" }))
+      .rejects.toThrow("whatsapp_evolution_webhook_config_failed");
   });
 });
