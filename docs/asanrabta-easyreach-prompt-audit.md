@@ -86,3 +86,9 @@ Branch: `fix/evolution-build-validated`, created from the current WhatsApp harde
 6. Keep the production branch untouched until all required gates have evidence and an explicit sign-off.
 
 The master baseline remains the controlling product/architecture contract; this report and the requirement matrix record evidence status, not permission to skip release gates.
+
+
+### Phase 3 — Specialist contract baseline (2026-10-09)
+- Added `docs/AI_WORKFORCE_SPECIALIST_CONTRACTS.md` defining the Master Agent's eight bounded capabilities, allowed/prohibited tools, evidence requirements, escalation rules, tenant context, and minimum contract tests.
+- The document explicitly distinguishes a contract specification from implemented/tested runtime behavior. No claim is made that eight independently testable specialist modules are already active.
+- Next in the approved order: implement deterministic capability routing and per-capability tool enforcement; add contract tests; then proceed to Business Brain verification/limits only after this gate is validated.
