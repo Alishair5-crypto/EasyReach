@@ -1,3 +1,5 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
@@ -6,14 +8,45 @@ import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, getWhats
 
 function text(value: unknown, max = 5000) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 function validId(value: string) { return /^[0-9A-Za-z_-]{2,200}$/.test(value); }
-function publicHttpsUrl(value: string) {
+function isPublicIpv4(address: string) {
+  const octets = address.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const [a, b, c] = octets;
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && (b === 168 || (b === 0 && c === 0) || (b === 0 && c === 2))) return false;
+  if (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) return false;
+  if (a === 203 && b === 0 && c === 113) return false;
+  return true;
+}
+
+function isPublicIp(address: string) {
+  const family = isIP(address);
+  if (family === 4) return isPublicIpv4(address);
+  if (family !== 6) return false;
+  const ip = address.toLowerCase();
+  if (ip === "::" || ip === "::1" || ip.startsWith("fc") || ip.startsWith("fd") || ip.startsWith("fe8") ||
+      ip.startsWith("fe9") || ip.startsWith("fea") || ip.startsWith("feb") || ip.startsWith("ff") ||
+      ip.startsWith("2001:db8:")) return false;
+  // Accept only globally routable unicast IPv6 (2000::/3).
+  return ip.startsWith("2") || ip.startsWith("3");
+}
+
+async function publicHttpsUrl(value: string) {
   try {
-    const url = new URL(value); if (url.protocol !== "https:") return false;
-    const host = url.hostname.toLowerCase();
-    if (host === "localhost" || host.endsWith(".local") || host === "127.0.0.1" || host === "::1") return false;
-    if (/^(10|127)\./.test(host) || /^192\.168\./.test(host) || /^169\.254\./.test(host) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false;
-    return true;
-  } catch { return false; }
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return false;
+    const host = url.hostname.toLowerCase().replace(/\.$/, "");
+    if (!host || host === "localhost" || !host.includes(".") ||
+        host.endsWith(".local") || host.endsWith(".localhost") ||
+        host.endsWith(".internal") || host.endsWith(".test") || isIP(host)) return false;
+    const addresses = await lookup(host, { all: true, verbatim: true });
+    return addresses.length > 0 && addresses.every((entry) => isPublicIp(entry.address));
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: Request) {
@@ -48,7 +81,7 @@ export async function POST(req: Request) {
     } else {
       const baseUrl = text(body.base_url, 2000).replace(/\/+$/, ""), apiKey = text(body.api_key, 5000), instanceName = text(body.instance_name, 200);
       const webhookSecret = text(body.webhook_secret, 500);
-      if (!baseUrl || !apiKey || !instanceName || !publicHttpsUrl(baseUrl) || !/^[A-Za-z0-9_-]{2,100}$/.test(instanceName) || !webhookSecret) return NextResponse.json({ error: "evolution_credentials_required" }, { status: 400 });
+      if (!baseUrl || !apiKey || !instanceName || !(await publicHttpsUrl(baseUrl)) || !/^[A-Za-z0-9_-]{2,100}$/.test(instanceName) || !webhookSecret) return NextResponse.json({ error: "evolution_credentials_required" }, { status: 400 });
       Object.assign(secret, { base_url: baseUrl, api_key: apiKey, instance_name: instanceName, webhook_secret: webhookSecret });
       externalId = instanceName; displayName = text(body.display_name, 200) || "WhatsApp QR";
     }
