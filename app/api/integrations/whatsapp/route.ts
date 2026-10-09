@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
 import { encryptSecret, sha256 } from "@/lib/integrations/secrets";
 import { createPrivilegedClient } from "@/lib/integrations/server";
-import { getEvolutionStatus, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
+import { configureEvolutionWebhook, getEvolutionQr, getEvolutionStatus, getWhatsAppWebhookUrl, normalizeEvolutionConnectionState, subscribeMetaWaba, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
 
 function text(value: unknown, max = 5000) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 function validId(value: string) { return /^[0-9A-Za-z_-]{2,200}$/.test(value); }
@@ -70,21 +70,65 @@ export async function POST(req: Request) {
     if (secretError) throw secretError;
 
     let verification: Record<string, unknown> = {};
+    let finalStatus = "preparing";
     if (provider === "whatsapp_meta") {
       verification = await verifyMetaCredentials(secret);
       if (secret.waba_id) await subscribeMetaWaba(secret);
     } else {
-      verification = await getEvolutionStatus(secret);
+      let providerStatus: Record<string, unknown> | null = null;
+      try {
+        providerStatus = await getEvolutionStatus(secret);
+      } catch (error) {
+        // A missing instance is recoverable: getEvolutionQr creates the named
+        // instance on a 404. Authentication/network failures still fail closed.
+        if (!(error instanceof Error) || error.message !== "whatsapp_evolution_status_failed") throw error;
+      }
+
+      if (!providerStatus) {
+        await getEvolutionQr(secret);
+        finalStatus = "qr_ready";
+      } else {
+        finalStatus = normalizeEvolutionConnectionState(providerStatus);
+        if (finalStatus === "disconnected" || finalStatus === "preparing") {
+          await getEvolutionQr(secret);
+          finalStatus = "qr_ready";
+        }
+      }
+
+      const webhook = await configureEvolutionWebhook(secret);
+      verification = {
+        connection_state: finalStatus,
+        webhook_configured: webhook.configured,
+        webhook_events: webhook.events,
+      };
     }
 
-    const { error: statusError } = await supabase.from("integrations").update({ status: "preparing", last_sync_at: new Date().toISOString(), error_message: null, updated_at: new Date().toISOString() }).eq("id", integrationId).eq("tenant_id", tenant.id);
+    const { error: statusError } = await supabase.from("integrations").update({
+      status: finalStatus,
+      last_sync_at: new Date().toISOString(),
+      error_message: null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", integrationId).eq("tenant_id", tenant.id);
     if (statusError) throw statusError;
-    await supabase.from("audit_logs").insert({ tenant_id: tenant.id, actor_id: user.id, action: "integration.whatsapp.configured", resource_type: "integration", resource_id: integrationId, new_data: { provider, provider_external_id: externalId } });
+
+    const { error: auditError } = await supabase.from("audit_logs").insert({
+      tenant_id: tenant.id,
+      actor_id: user.id,
+      action: "integration.whatsapp.configured",
+      resource_type: "integration",
+      resource_id: integrationId,
+      new_data: { provider, provider_external_id: externalId, status: finalStatus },
+    });
+    if (auditError) throw auditError;
 
     return NextResponse.json({
-      integrationId, provider, status: "preparing",
-      verification: provider === "whatsapp_meta" ? { id: verification.id, display_phone_number: verification.display_phone_number, verified_name: verification.verified_name } : { provider_response: verification },
-      webhookUrl: (process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ?? "") + "/api/webhooks/whatsapp"
+      integrationId,
+      provider,
+      status: finalStatus,
+      verification: provider === "whatsapp_meta"
+        ? { id: verification.id, display_phone_number: verification.display_phone_number, verified_name: verification.verified_name }
+        : verification,
+      webhookUrl: getWhatsAppWebhookUrl(),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "whatsapp_integration_failed";
