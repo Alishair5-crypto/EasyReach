@@ -7,10 +7,10 @@
 -- The live schema has a non-null payload_hash column; the original checked-in
 -- migration omitted it and the original create RPC failed to populate it. Bring
 -- clean installs and existing databases to the same schema before replacing RPCs.
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 alter table public.ai_action_confirmations add column if not exists payload_hash text;
 update public.ai_action_confirmations
-set payload_hash = encode(public.digest(payload::text, 'sha256'), 'hex')
+set payload_hash = encode(extensions.digest(payload::text, 'sha256'), 'hex')
 where payload_hash is null;
 alter table public.ai_action_confirmations alter column payload_hash set not null;
 
@@ -192,7 +192,7 @@ begin
   if c.confirmed_at is null then raise exception 'confirmation_required'; end if;
   if c.expires_at <= now() then raise exception 'confirmation_expired'; end if;
 
-  v_hash := encode(public.digest(c.payload::text, 'sha256'), 'hex');
+  v_hash := encode(extensions.digest(c.payload::text, 'sha256'), 'hex');
   if v_hash <> c.payload_hash then raise exception 'confirmation_integrity_failure'; end if;
   v_key := 'ai-confirmation:' || c.id::text;
   v_order := public.create_order_atomic(
@@ -409,7 +409,7 @@ begin
     payload_hash, token_hash, expires_at
   ) values (
     p_tenant_id, p_agent_id, p_conversation_id, p_customer_id, 'create_order',
-    p_payload, encode(public.digest(p_payload::text, 'sha256'), 'hex'), p_token_hash, p_expires_at
+    p_payload, encode(extensions.digest(p_payload::text, 'sha256'), 'hex'), p_token_hash, p_expires_at
   ) returning id into confirmation_id;
 
   return jsonb_build_object('confirmation_id', confirmation_id, 'action_type', 'create_order', 'expires_at', p_expires_at);
