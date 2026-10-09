@@ -24,15 +24,15 @@ begin
     raise exception 'not_authenticated' using errcode = '42501';
   end if;
 
-  if pg_catalog.length(pg_catalog.btrim(pg_catalog.coalesce(p_business_name, ''))) < 2
+  if pg_catalog.length(pg_catalog.btrim(coalesce(p_business_name, ''))) < 2
      or pg_catalog.length(pg_catalog.btrim(p_business_name)) > 120 then
     raise exception 'invalid_business_name';
   end if;
-  if pg_catalog.length(pg_catalog.btrim(pg_catalog.coalesce(p_business_type, ''))) < 2
+  if pg_catalog.length(pg_catalog.btrim(coalesce(p_business_type, ''))) < 2
      or pg_catalog.length(pg_catalog.btrim(p_business_type)) > 80 then
     raise exception 'invalid_business_type';
   end if;
-  if pg_catalog.length(pg_catalog.btrim(pg_catalog.coalesce(p_agent_name, ''))) < 2
+  if pg_catalog.length(pg_catalog.btrim(coalesce(p_agent_name, ''))) < 2
      or pg_catalog.length(pg_catalog.btrim(p_agent_name)) > 80 then
     raise exception 'invalid_agent_name';
   end if;
