@@ -43,7 +43,10 @@ function ipv6In(value: bigint, network: bigint, prefix: number) {
 function publicIpv6(address: string) {
   if (isIP(address) !== 6) return false;
   const value = ipv6Number(address);
-  if (value === null) return false;
+  const globalUnicast = ipv6Number("2000::");
+  // Only accept IPv6 global-unicast space. This also rejects IPv4-mapped,
+  // loopback, unspecified, link-local, unique-local and transition ranges by default.
+  if (value === null || globalUnicast === null || !ipv6In(value, globalUnicast, 3)) return false;
   const blocked: Array<[string, number]> = [
     ["::", 128], ["::1", 128], ["::", 96], ["fc00::", 7], ["fe80::", 10],
     ["ff00::", 8], ["2001:db8::", 32], ["2001::", 32], ["2002::", 16],
