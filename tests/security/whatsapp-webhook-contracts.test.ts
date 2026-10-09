@@ -28,7 +28,9 @@ describe("WhatsApp webhook security contracts", () => {
   });
 
   it("uses a unique event receipt to detect duplicate deliveries", () => {
-    expect(webhook).toContain('if(receiptError.code==="23505")return jsonResponse({received:true,duplicate:true})');
+    expect(webhook).toContain('if(receiptError.code!=="23505")throw receiptError');
+    expect(webhook).toContain('if(existing?.status!=="failed")return jsonResponse({received:true,duplicate:true})');
+    expect(webhook).toContain('.eq("id",receiptId!).');
     expect(webhook).toContain('const eventId=`${provider}:${sha256(rawBody)}`');
   });
   
