@@ -376,6 +376,8 @@ begin
   if p_payment_status not in ('unpaid', 'pending', 'paid', 'failed', 'refunded') then
     raise exception 'invalid_payment_status';
   end if;
+  -- No provider-backed payment verification flow exists yet. Never fabricate paid state.
+  if p_payment_status = 'paid' then raise exception 'payment_verification_required'; end if;
 
   select result into existing from public.order_action_receipts
   where tenant_id = p_tenant_id and order_id = p_order_id
