@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
 
@@ -26,8 +25,8 @@ function safeOrderError(message: string) {
 
 export async function POST(req: Request) {
   try {
-    const { supabase, tenant } = await getTenantContext();
-    if (!tenant) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+    const { supabase, tenant, user } = await getTenantContext();
+    if (!tenant || !user) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50) {
@@ -77,14 +76,20 @@ export async function POST(req: Request) {
     if (readError) return NextResponse.json({ error: "order_read_failed" }, { status: 500 });
     if (!order) return NextResponse.json({ error: "order_read_failed" }, { status: 500 });
 
-    // Replaying the same key returns the same order ID from the atomic RPC.
-    // Audit only the first creation, not an idempotent replay.
-    const isReplay = order.creation_idempotency_key === rawKey && order.created_at !== order.updated_at;
-    if (!isReplay) {
-      const { data: user } = await supabase.auth.getUser();
+    // The RPC is idempotent. Avoid duplicating its audit event when a client retries.
+    const { data: existingAudit, error: auditReadError } = await supabase.from("audit_logs")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("resource_type", "order")
+      .eq("resource_id", orderId)
+      .eq("action", "order_created")
+      .limit(1)
+      .maybeSingle();
+    if (auditReadError) return NextResponse.json({ error: "order_audit_failed" }, { status: 500 });
+    if (!existingAudit) {
       const { error: auditError } = await supabase.from("audit_logs").insert({
         tenant_id: tenant.id,
-        actor_id: user.user?.id,
+        actor_id: user.id,
         action: "order_created",
         resource_type: "order",
         resource_id: orderId,
