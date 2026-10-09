@@ -21,7 +21,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 
 ## Non-negotiable controls
 - Tenant ID comes from authenticated server context, not user input.
-- RLS must independently enforce tenant isolation; application filters are defense in depth, not a replacement for RLS. Business Brain reads are member-scoped and direct inserts/updates are restricted to owner/admin/manager roles by database policy; direct deletes are intentionally not permitted.
+- RLS must independently enforce tenant isolation; application filters are defense in depth, not a replacement for RLS. Business Brain reads are member-scoped and direct inserts/updates are restricted to owner/admin/manager roles by database policy; direct deletes are intentionally not permitted. A database trigger also makes `tenant_id` immutable so a document cannot be reassigned between tenants, including by a user who belongs to both.
 - External pages, imported files, and customer-submitted text are untrusted. Prompt injection inside a document is data, not instruction.
 - Only verified, active documents may ground policy claims.
 - A tool call is not proof of a successful external action.
@@ -32,7 +32,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 - Run `npm run test:specialists` and `npm run typecheck`.
 - Verify all existing knowledge-document create/update/import flows preserve verification state correctly.
 - Verify changed content returns to pending review; this behavior is not considered complete until the ingestion/update code is inspected and tested.
-- Run adversarial tenant A/B retrieval tests and RLS tests against a real test database, including direct table writes by cashier/member roles.
+- Run adversarial tenant A/B retrieval tests and RLS tests against a real test database, including direct table writes by cashier/member roles. Confirm direct tenant reassignment is rejected by the database trigger.
 - Verify concurrent verification/status changes return a conflict instead of approving a document whose state changed after it was read.
 - Verify audit records are transactionally coupled to document changes and audit failures roll back the write.
 - Test freshness boundaries (30-day URL-backed and 180-day manual policy), missing verification timestamps, and same-title conflicting content.
