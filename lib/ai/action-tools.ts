@@ -87,8 +87,9 @@ export async function executeSalesTool(ctx:ToolContext,name:SalesToolName,args:u
     const{data,error}=await s.from("knowledge_documents").select("id,title,source_type,content,source_url,last_synced_at,verification_status,verified_at,created_at").eq("tenant_id",ctx.tenantId).eq("status","active").eq("verification_status","verified").or(`title.ilike.%${safe}%,content.ilike.%${safe}%`).limit(10);
     if(error)throw error;rows.push(...(data??[]));
    }
-   const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id)).slice(0,20);
-   return{ok:true,tool:name,data:annotateKnowledgeTrust(rows).filter(row=>row.authoritative_eligible)};
+   const seen=new Set<string>();rows=rows.filter(x=>!seen.has(x.id)&&seen.add(x.id));
+   const trusted=annotateKnowledgeTrust(rows).filter(row=>row.authoritative_eligible);
+   return{ok:true,tool:name,data:trusted.slice(0,20)};
   }
 
   if(name==="get_business_policy"){
