@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:specialists": "node --test tests/specialists.test.mjs tests/business-brain.test.mjs tests/knowledge-trust.test.mjs tests/whatsapp-webhook.test.mjs tests/public-url.test.mjs tests/safe-evolution-fetch.test.mjs",
+    "test:specialists": "node --test tests/specialists.test.mjs tests/business-brain.test.mjs tests/knowledge-trust.test.mjs tests/whatsapp-webhook.test.mjs tests/public-url.test.mjs tests/safe-evolution-fetch.test.mjs tests/whatsapp-status.test.mjs",
     "test:integration:security": "node --test tests/business-brain.integration.test.mjs"
   },
   "dependencies": {
