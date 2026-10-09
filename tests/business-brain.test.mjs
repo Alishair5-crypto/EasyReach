@@ -135,3 +135,13 @@ test("same-title conflicting verified knowledge is never authoritative", async (
   assert.ok(rows.every((row) => row.conflict_status === "possible_conflict"));
   assert.ok(rows.every((row) => row.authoritative_eligible === false));
 });
+
+
+test("knowledge search detects conflicts before applying its response limit", () => {
+  const retrieval = actions.indexOf("const trusted=annotateKnowledgeTrust(rows).filter(row=>row.authoritative_eligible)");
+  const responseLimit = actions.indexOf("return{ok:true,tool:name,data:trusted.slice(0,20)}");
+  assert.notEqual(retrieval, -1);
+  assert.notEqual(responseLimit, -1);
+  assert.ok(retrieval < responseLimit, "trust and conflict annotation must run before limiting returned rows");
+  assert.doesNotMatch(actions, /seen\.add\(x\.id\)\)\.slice\(0,20\)/);
+});
