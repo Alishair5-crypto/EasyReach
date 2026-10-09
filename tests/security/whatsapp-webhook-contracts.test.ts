@@ -54,4 +54,14 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).toContain('signature_verified:true},signature_verified:true');
     expect(webhook).not.toContain('payload:body,signature_verified:true');
   });
+
+  it("implements Meta's GET webhook verification handshake", () => {
+    expect(webhook).toContain('export async function GET(req:Request)');
+    expect(webhook).toContain('url.searchParams.get("hub.mode")');
+    expect(webhook).toContain('url.searchParams.get("hub.verify_token")');
+    expect(webhook).toContain('url.searchParams.get("hub.challenge")');
+    expect(webhook).toContain('process.env.META_WEBHOOK_VERIFY_TOKEN');
+    expect(webhook).toContain('timingSafeEqualHex(sha256(expected),sha256(supplied))');
+    expect(webhook).toContain('new Response(challenge');
+  });
 });
