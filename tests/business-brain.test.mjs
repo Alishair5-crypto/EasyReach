@@ -13,6 +13,7 @@ test("Business Brain policy retrieval is tenant-scoped, active, and verified-onl
   assert.match(tools, /eq\("status","active"\)/);
   assert.match(tools, /eq\("verification_status","verified"\)/);
   assert.match(tools, /verified_at/);
+  assert.doesNotMatch(tools, /select\([^\n]*updated_at/);
 });
 
 test("AI knowledge search is tenant-scoped and excludes unverified documents", () => {
@@ -21,6 +22,7 @@ test("AI knowledge search is tenant-scoped and excludes unverified documents", (
   assert.match(actions, /eq\("status","active"\)/);
   assert.match(actions, /eq\("verification_status","verified"\)/);
   assert.match(actions, /verified_at/);
+  assert.doesNotMatch(actions, /knowledge_documents"\)\.select\([^\n]*updated_at/);
 });
 
 test("verification lifecycle has controlled states and records verifier evidence", () => {
@@ -71,7 +73,7 @@ test("Business Brain audit records share the document transaction", async () => 
   const auditMigration = await readFile(new URL("../supabase/migrations/20261009093000_business_brain_atomic_audit.sql", import.meta.url), "utf8");
   assert.match(auditMigration, /create or replace function private\.audit_knowledge_document_change\(\)/);
   assert.match(auditMigration, /after insert or update on public\.knowledge_documents/);
-  assert.match(auditMigration, /security invoker|security definer/i) === false;
+  assert.doesNotMatch(auditMigration, /security (?:invoker|definer)/i);
   assert.match(auditMigration, /insert into public\.audit_logs/);
   assert.match(auditMigration, /actor_id, action, resource_type, resource_id, old_data, new_data, reason/);
 });

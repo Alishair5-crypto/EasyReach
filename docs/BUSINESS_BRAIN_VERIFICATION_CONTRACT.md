@@ -7,7 +7,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 - `knowledge_documents` has `verification_status` constrained to `pending`, `verified`, or `rejected`, plus `verified_at` and `verified_by` evidence fields.
 - AI policy retrieval and `search_knowledge` require both `status = active` and `verification_status = verified`.
 - Queries are scoped by the server-resolved tenant ID.
-- Retrieval includes verification/sync timestamps so downstream behavior can assess freshness.
+- Retrieval includes verification/sync timestamps plus deterministic freshness and same-title conflict flags. URL-backed sources require refresh within 30 days; manually maintained policies require re-verification within 180 days. Stale, timestamp-unknown, or conflicting records are marked ineligible for authoritative answers.
 - Retrieved source content remains untrusted data. It may support factual answers but must never override system rules, authorize tools, or reveal secrets.
 
 ## Required lifecycle
@@ -34,6 +34,7 @@ The Business Brain is the tenant's authoritative, evidence-backed knowledge laye
 - Verify changed content returns to pending review; this behavior is not considered complete until the ingestion/update code is inspected and tested.
 - Run adversarial tenant A/B retrieval tests and RLS tests against a real test database, including direct table writes by cashier/member roles.
 - Verify audit records are transactionally coupled to document changes and audit failures roll back the write.
+- Test freshness boundaries (30-day URL-backed and 180-day manual policy), missing verification timestamps, and same-title conflicting content.
 - Confirm policy screens expose review status, reviewer, verification timestamp, source, and stale/conflict warnings.
 - Test prompt-injection documents, empty knowledge, rejected content, stale content, and conflicting approved policies.
 - Do not call this production-ready until database migrations, UI review workflow, tenant isolation, and end-to-end tests pass.
