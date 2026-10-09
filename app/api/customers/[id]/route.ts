@@ -33,8 +33,9 @@ export async function GET(_req:Request,{params}:Ctx){
 
 export async function PATCH(req:Request,{params}:Ctx){
   try{
-    const {supabase,tenant,user}=await getTenantContext();
-    if(!tenant||!user)return NextResponse.json({error:"workspace_required"},{status:400});
+    const {supabase,tenant,user,membership}=await getTenantContext();
+    if(!tenant||!user||!membership)return NextResponse.json({error:"workspace_required"},{status:400});
+    if(!["owner","admin","manager","sales","support"].includes(membership.role))return NextResponse.json({error:"not_authorized"},{status:403});
     const {id}=await params;
     const body=await req.json();
     const patch:Record<string,unknown>={};
