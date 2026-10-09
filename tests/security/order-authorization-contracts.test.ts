@@ -35,4 +35,10 @@ describe("order and AI confirmation authorization regression contracts", () => {
     expect(migration).toMatch(/function public\.create_order_atomic[\s\S]*?insert into public\.audit_logs[\s\S]*?Atomic order creation with server-verified catalog and inventory/i);
     expect(migration).toMatch(/set search_path = pg_catalog, public, pg_temp/i);
   });
+
+  it("stores and verifies a deterministic hash for each confirmation payload", () => {
+    expect(migration).toMatch(/add column if not exists payload_hash text/i);
+    expect(migration).toMatch(/payload_hash, token_hash, expires_at[\s\S]*?public\.digest\(p_payload::text, 'sha256'\)/i);
+    expect(migration).toMatch(/v_hash := encode\(public\.digest\(c\.payload::text, 'sha256'\), 'hex'\)/i);
+  });
 });
