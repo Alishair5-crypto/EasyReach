@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
 import { getIntegrationSecret } from "@/lib/integrations/server";
 import { getEvolutionStatus, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
+import { normalizeEvolutionConnectionStatus } from "@/lib/integrations/whatsapp-status";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,9 @@ export async function POST(req: Request) {
       ? await verifyMetaCredentials(secret)
       : await getEvolutionStatus(secret);
     const now = new Date().toISOString();
+    const normalizedStatus = integration.kind === "whatsapp_meta"
+      ? "connected"
+      : normalizeEvolutionConnectionStatus(providerStatus);
 
     const metadata = {
       ...(integration.metadata ?? {}),
@@ -42,18 +46,18 @@ export async function POST(req: Request) {
     };
 
     const { error: updateError } = await supabase.from("integrations").update({
-      status: "connected", last_sync_at: now, error_message: null, updated_at: now, metadata,
+      status: normalizedStatus, last_sync_at: now, error_message: null, updated_at: now, metadata,
     }).eq("id", integration.id).eq("tenant_id", tenant.id);
     if (updateError) throw updateError;
 
     await supabase.from("audit_logs").insert({
       tenant_id: tenant.id, actor_id: user.id, action: "integration.whatsapp.status_checked",
       resource_type: "integration", resource_id: integration.id,
-      new_data: { provider: integration.kind, status: "connected" },
+      new_data: { provider: integration.kind, status: normalizedStatus },
     });
 
     return NextResponse.json({
-      integrationId: integration.id, provider: integration.kind, status: "connected",
+      integrationId: integration.id, provider: integration.kind, status: normalizedStatus,
       displayName: integration.display_name, providerExternalId: integration.provider_external_id, lastSyncAt: now,
       providerStatus: integration.kind === "whatsapp_meta"
         ? { id: providerStatus.id ?? null, display_phone_number: providerStatus.display_phone_number ?? null, verified_name: providerStatus.verified_name ?? null, quality_rating: providerStatus.quality_rating ?? null }
