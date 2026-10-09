@@ -10,7 +10,7 @@ export type KnowledgeTrust = {
   freshness_status: "current" | "stale" | "unknown";
   conflict_status: "none" | "possible_conflict";
   authoritative_eligible: boolean;
-  trust_reason: "current_verified_source" | "source_refresh_required" | "verification_timestamp_missing" | "conflicting_verified_documents";
+  trust_reason: "current_verified_source" | "source_refresh_required" | "verification_timestamp_missing" | "verification_timestamp_invalid" | "conflicting_verified_documents";
   freshness_age_days: number | null;
 };
 
@@ -37,8 +37,11 @@ export function annotateKnowledgeTrust<T extends KnowledgeTrustInput>(rows: T[],
     const hasExternalSource = Boolean(row.source_url?.trim());
     const timestamp = hasExternalSource ? row.last_synced_at : row.verified_at;
     const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
-    const validTimestamp = Number.isFinite(parsed);
-    const ageMs = validTimestamp ? Math.max(0, now - parsed) : null;
+    const timestampProvided = Boolean(timestamp);
+    const parsedTimestamp = Number.isFinite(parsed);
+    const timestampInvalid = timestampProvided && (!parsedTimestamp || parsed > now);
+    const validTimestamp = parsedTimestamp && parsed <= now;
+    const ageMs = validTimestamp ? now - parsed : null;
     const maxAge = hasExternalSource ? EXTERNAL_SOURCE_MAX_AGE_MS : MANUAL_POLICY_MAX_AGE_MS;
     const freshness_status: KnowledgeTrust["freshness_status"] =
       !validTimestamp ? "unknown" : ageMs! > maxAge ? "stale" : "current";
@@ -50,7 +53,7 @@ export function annotateKnowledgeTrust<T extends KnowledgeTrustInput>(rows: T[],
       : freshness_status === "stale"
         ? "source_refresh_required"
         : freshness_status === "unknown"
-          ? "verification_timestamp_missing"
+          ? timestampInvalid ? "verification_timestamp_invalid" : "verification_timestamp_missing"
           : "current_verified_source";
     return {
       ...row,
