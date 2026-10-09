@@ -109,7 +109,7 @@ export function normalizeEvolutionConnectionState(payload: Record<string, unknow
 }
 
 export async function getEvolutionQr(secret: Record<string, unknown>, resolver?: DnsLookup) {
-  const baseUrl = await validatedEvolutionBaseUrl(secret);
+  const baseUrl = await validatedEvolutionBaseUrl(secret, resolver);
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   if (!baseUrl || !apiKey || !instance) throw new Error("whatsapp_evolution_credentials_invalid");
@@ -158,7 +158,7 @@ export function getWhatsAppWebhookUrl() {
 }
 
 export async function configureEvolutionWebhook(secret: Record<string, unknown>, resolver?: DnsLookup) {
-  const baseUrl = await validatedEvolutionBaseUrl(secret);
+  const baseUrl = await validatedEvolutionBaseUrl(secret, resolver);
   const apiKey = requiredString(secret, "api_key");
   const instance = requiredString(secret, "instance_name");
   const webhookSecret = requiredString(secret, "webhook_secret");
