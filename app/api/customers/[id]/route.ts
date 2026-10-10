@@ -1,6 +1,5 @@
 import {NextResponse} from "next/server";
 import {getTenantContext} from "@/lib/auth";
-import {createPrivilegedClient} from "@/lib/integrations/server";
 
 type Ctx={params:Promise<{id:string}>};
 const editable=["name","phone","email","preferred_language","consent","tags","notes"] as const;
@@ -49,15 +48,13 @@ export async function PATCH(req:Request,{params}:Ctx){
     if("tags" in patch&&(!Array.isArray(patch.tags)||patch.tags.some(x=>typeof x!=="string")))return NextResponse.json({error:"invalid_tags"},{status:400});
     if("notes" in patch&&patch.notes!==null&&typeof patch.notes!=="string")return NextResponse.json({error:"invalid_notes"},{status:400});
     if("consent" in patch&&(patch.consent===null||typeof patch.consent!=="object"||Array.isArray(patch.consent)))return NextResponse.json({error:"invalid_consent"},{status:400});
-    const {data:before,error:beforeError}=await supabase.from("customers").select("*").eq("tenant_id",tenant.id).eq("id",id).maybeSingle();
-    if(beforeError)throw beforeError;
-    if(!before)return NextResponse.json({error:"customer_not_found"},{status:404});
-    patch.updated_at=new Date().toISOString();
-    const {data:customer,error}=await supabase.from("customers").update(patch).eq("tenant_id",tenant.id).eq("id",id).select("id,external_key,name,phone,email,preferred_language,consent,tags,notes,last_seen_at,created_at,updated_at").single();
+    const {data:customer,error}=await supabase.rpc("update_customer_atomic",{
+      p_tenant_id:tenant.id,
+      p_customer_id:id,
+      p_patch:patch,
+    });
     if(error)throw error;
-    const auditClient=createPrivilegedClient();
-    const {error:auditError}=await auditClient.from("audit_logs").insert({tenant_id:tenant.id,actor_id:user.id,action:"customer.updated",resource_type:"customer",resource_id:id,old_data:before,new_data:customer,reason:"Customer 360 profile update"});
-    if(auditError)throw auditError;
+    if(!customer||typeof customer!=="object"||Array.isArray(customer))return NextResponse.json({error:"customer_update_failed"},{status:500});
     return NextResponse.json({customer});
   }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"customer_update_failed"},{status:500});}
 }
