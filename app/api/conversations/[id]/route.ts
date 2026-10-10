@@ -5,6 +5,8 @@ const statuses = ["open", "pending", "closed"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
 const editableRoles = ["owner", "admin", "manager", "sales", "support"] as const;
 const readableRoles = editableRoles;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type ConversationPatch = {
   status?: (typeof statuses)[number];
   priority?: (typeof priorities)[number];
@@ -15,6 +17,10 @@ type JsonRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validConversationId(id: string): boolean {
+  return uuidPattern.test(id);
 }
 
 function parsePatch(body: JsonRecord): ConversationPatch | null {
@@ -36,7 +42,7 @@ function parsePatch(body: JsonRecord): ConversationPatch | null {
   }
   if ("assigned_to" in body) {
     if (body.assigned_to !== null &&
-      (typeof body.assigned_to !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.assigned_to))) {
+      (typeof body.assigned_to !== "string" || !uuidPattern.test(body.assigned_to))) {
       return null;
     }
     patch.assigned_to = body.assigned_to as string | null;
@@ -63,6 +69,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     }
 
     const { id } = await params;
+    if (!validConversationId(id)) {
+      return NextResponse.json({ error: "invalid_conversation_id" }, { status: 400 });
+    }
+
     const { data: conversation, error } = await supabase
       .from("conversations")
       .select("id,customer_id,channel,external_id,status,priority,assigned_to,handoff,last_message_at,created_at")
@@ -106,12 +116,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "not_authorized" }, { status: 403 });
     }
 
+    const { id } = await params;
+    if (!validConversationId(id)) {
+      return NextResponse.json({ error: "invalid_conversation_id" }, { status: 400 });
+    }
+
     const body: unknown = await req.json().catch(() => null);
     if (!isRecord(body)) return NextResponse.json({ error: "invalid_request_body" }, { status: 400 });
     const patch = parsePatch(body);
     if (!patch) return NextResponse.json({ error: "invalid_conversation_patch" }, { status: 400 });
 
-    const { id } = await params;
     const { data, error } = await supabase.rpc("update_conversation_atomic", {
       p_tenant_id: tenant.id,
       p_conversation_id: id,
