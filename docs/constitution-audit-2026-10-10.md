@@ -99,3 +99,12 @@ The active workspace cookie is `HttpOnly`, `SameSite=Strict`, scoped to `/`, and
 - Added `/workspaces/select` with a selector UI; onboarding routes existing multi-workspace users there instead of presenting new-workspace creation.
 - **Verification:** security tests passed in CI at commit `9c962812a2d8e519608620925dcbfcaea3368b74`, but TypeScript typecheck failed because the tenant result was typed too loosely. The tenant shape has been corrected in a follow-up commit; a new full CI run must pass before this layer is considered verified.
 - **Release gate unchanged:** no merge or production deployment. Live RLS, API authorization, and end-to-end multi-workspace switching still require verification.
+
+
+### ER-011 verification update
+
+- **Passed:** GitHub Actions [38025719180](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38025719180) at commit `50a1383970410e22eed8909fb7bea759aa0db3dc`: all security regression tests, TypeScript type-check, and Next.js production build passed.
+- Added active-workspace contract coverage for no silent earliest-membership selection, membership-validated selection, HttpOnly/SameSite cookie settings, and the intentional switch route.
+- Dashboard and Settings now expose a workspace-switch link. The selection API remains server-validated; a client-submitted workspace ID alone never grants access.
+- **Not yet verified:** live multi-tenant RLS behavior, browser-based switching with real accounts, session/cookie behavior in the deployed environment, and all protected page/API UX when workspace context is absent.
+- **Release status:** ACTIVE / NOT SIGNED OFF. No production merge/deploy.
