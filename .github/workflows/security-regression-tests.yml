@@ -25,3 +25,8 @@ jobs:
         run: npm test
       - name: Type-check application and tests
         run: npm run typecheck
+      - name: Build Next.js application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://build-check.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: build-check-only-placeholder-key
