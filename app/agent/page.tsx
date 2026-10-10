@@ -24,6 +24,7 @@ export default async function AgentPage() {
           <a href="/inbox">Shared Inbox</a>
           <a href="/customers">Customers</a>
           <a href="/orders">Orders</a>
+          <a href="/settings">Settings</a>
         </nav>
         <div className="sidebar-bottom"><span>{user.email}</span><span>{membership?.role}</span></div>
       </aside>
