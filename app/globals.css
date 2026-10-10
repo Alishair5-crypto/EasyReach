@@ -9,3 +9,156 @@
 .auth-card .setup-field input:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px #7dd3fc26}
 .auth-card .setup-form .setup-note{display:flex;align-items:center;gap:12px;flex-wrap:wrap;overflow-wrap:anywhere}
 .auth-card .setup-form .error{line-height:1.5;overflow-wrap:anywhere}
+
+
+
+/* EasyReach visual system v1 — Obsidian Glass Lite */
+:root{
+  color-scheme:dark;
+  --bg:#090b14;
+  --panel:#111522;
+  --panel2:#0d101b;
+  --line:#272c40;
+  --muted:#a3abc0;
+  --text:#f4f5fb;
+  --accent:#a69bff;
+  --good:#72e0b0;
+  --bad:#ff9baf;
+  --violet:#8275ff;
+  --cyan:#72d8e8;
+  --surface-glass:rgba(19,23,39,.82);
+}
+html{background:var(--bg);scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(ellipse at 12% -8%,rgba(105,88,255,.19),transparent 36%),
+    radial-gradient(ellipse at 94% 8%,rgba(66,194,219,.10),transparent 30%),
+    linear-gradient(180deg,#0b0d17 0%,#090b14 52%,#0b0d16 100%);
+  color:var(--text);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:-.012em;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:rgba(166,155,255,.32);color:#fff}
+a{transition:color .18s ease,background .18s ease,border-color .18s ease,transform .18s ease}
+.shell,.workspace{max-width:1440px;padding:clamp(20px,3vw,44px)}
+.shell{max-width:1320px}
+.top{align-items:center;padding:7px 0 16px}
+.brand{display:inline-flex;align-items:center;gap:11px;font-size:23px;font-weight:850;letter-spacing:-.055em}
+.brand::before{content:"ER";display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:linear-gradient(140deg,#a69bff,#6b60e8 62%,#53c9dc);color:#090b14;font-size:11px;font-weight:950;letter-spacing:-.04em;box-shadow:0 5px 24px #8275ff38}
+.pill,.plan-badge,.status{border-color:#343951;background:rgba(20,24,40,.7);color:#c2c7d8;letter-spacing:.01em}
+.hero{max-width:960px;padding:clamp(64px,10vw,124px) 0 72px;position:relative}
+.hero::before{content:"";position:absolute;z-index:-1;top:42px;left:-48px;width:min(500px,80vw);height:360px;border-radius:50%;background:radial-gradient(ellipse,rgba(114,98,255,.16),transparent 70%);filter:blur(18px);pointer-events:none}
+.eyebrow{color:#b0a7ff;font-size:11px;font-weight:800;letter-spacing:.17em;text-transform:uppercase}
+.hero h1,.auth-card h1{font-size:clamp(44px,7.3vw,88px);line-height:.99;letter-spacing:-.072em;font-weight:800;text-wrap:balance;margin:22px 0 24px;max-width:950px}
+.hero p{max-width:710px;color:#b2b8ca;font-size:clamp(17px,2vw,21px);line-height:1.72;letter-spacing:-.02em}
+.actions{gap:13px;margin-top:31px}
+.button{padding:13px 19px;border-radius:12px;background:linear-gradient(135deg,#c0b8ff,#8e82ff 70%,#7d74f2);color:#101020;border:1px solid rgba(225,221,255,.45);font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(103,88,242,.17);transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.button:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(103,88,242,.28);filter:brightness(1.04)}
+.button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.button.secondary{background:rgba(20,24,40,.74);color:#f2f3fb;border-color:#343951;box-shadow:none}
+.button.secondary:hover{background:#1b2033;border-color:#7770d9}
+.grid,.channel-grid,.metric-grid{gap:16px}
+.card,.channel-card,.progress-card,.empty-card{
+  background:linear-gradient(145deg,rgba(21,26,44,.94),rgba(14,17,29,.92));
+  border:1px solid rgba(104,112,148,.25);
+  border-radius:19px;
+  padding:23px;
+  box-shadow:0 12px 35px rgba(0,0,0,.13),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.grid .card{min-height:178px;position:relative;overflow:hidden}
+.grid .card::after{content:"";position:absolute;top:0;left:22px;right:22px;height:1px;background:linear-gradient(90deg,transparent,rgba(166,155,255,.6),transparent)}
+.card h3,.channel-title h3{font-size:16px;letter-spacing:-.025em;font-weight:750}
+.card p,.channel-card p{color:#aab1c5;line-height:1.7;font-size:14px}
+.app-shell{background:transparent;grid-template-columns:264px minmax(0,1fr)}
+.sidebar{z-index:2;padding:28px 18px 22px 22px;background:rgba(10,12,21,.88);border-right:1px solid rgba(104,112,148,.22);backdrop-filter:blur(22px)}
+.sidebar .brand{margin:2px 0 12px}
+.tenant-name{padding:14px 13px;border:1px solid #2b3045;background:linear-gradient(120deg,#171b2c,#111522);border-radius:13px;font-size:13px;letter-spacing:-.01em}
+.sidebar nav{gap:6px}
+.sidebar nav a{display:flex;align-items:center;min-height:42px;padding:11px 13px;border:1px solid transparent;border-radius:11px;font-size:13px;font-weight:600;color:#a5adc2}
+.sidebar nav a:hover{background:rgba(32,37,59,.7);color:#f3f4ff}
+.sidebar nav a.active{background:linear-gradient(100deg,rgba(130,117,255,.19),rgba(130,117,255,.06));border-color:rgba(166,155,255,.2);color:#dcd8ff}
+.sidebar-bottom{padding:14px 12px;border-top:1px solid #282d40;line-height:1.8;color:#969eb4}
+.workspace{max-width:none;padding:clamp(24px,3.2vw,48px);min-width:0}
+.workspace-head{align-items:center;margin-bottom:30px;gap:24px}
+.workspace-head h1{font-size:clamp(30px,3.5vw,44px);font-weight:800;letter-spacing:-.06em;line-height:1.05;margin:12px 0}
+.workspace-head .muted{max-width:650px;font-size:14px}
+.metric-grid{gap:14px}
+.metric.card{min-height:126px;padding:21px 22px;gap:14px}
+.metric span{font-size:12px;color:#a7aec2;font-weight:650}
+.metric strong{font-size:34px;letter-spacing:-.055em;font-weight:800}
+.section{margin-top:38px}
+.section-head{margin-bottom:17px;align-items:center}
+.section-head h2{font-size:21px;letter-spacing:-.04em;font-weight:800;margin-top:8px}
+.progress-card{padding:24px}
+.progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#e9eaf5;font-size:14px}
+.progress-top span{color:#b0a7ff;font-weight:750;font-variant-numeric:tabular-nums}
+.progress{background:#090c15;height:8px;margin:17px 0 22px}
+.progress span{background:linear-gradient(90deg,#7f73f8,#a99fff 65%,#70d6e5);border-radius:99px;box-shadow:0 0 18px #8275ff45}
+.step-grid{gap:12px}
+.step{font-size:11px;line-height:1.45;letter-spacing:0}
+.step span{width:29px;height:29px;border-color:#373d56;background:#141827;color:#b4bbce;font-size:12px;font-weight:700}
+.step.done span{background:#1a2a2a;border-color:#4fbd9b;color:#7ee5bd}
+.channel-card{min-height:185px;padding:20px;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+.channel-card:hover{transform:translateY(-2px);border-color:rgba(166,155,255,.45);background:linear-gradient(145deg,rgba(27,31,52,.96),rgba(14,17,29,.96))}
+.channel-title{align-items:flex-start}
+.channel-title h3{margin-top:2px}
+.status{font-size:10px;font-weight:750;padding:6px 9px;white-space:nowrap}
+.status.good{color:#82e7bf;border-color:#2d6a59;background:#102c26}
+.status.bad{color:#ffadbc;border-color:#773e51;background:#311722}
+.channel-card .button{align-self:flex-start;margin-top:6px}
+.empty-card{gap:7px;line-height:1.65}
+.auth-shell{background:radial-gradient(ellipse at 50% 25%,rgba(108,93,255,.16),transparent 42%)}
+.auth-card{background:linear-gradient(145deg,rgba(21,26,44,.97),rgba(12,15,26,.98));border:1px solid rgba(126,133,170,.29);border-radius:24px;box-shadow:0 28px 90px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.035);padding:clamp(26px,4vw,38px)}
+.auth-card h1{font-size:clamp(35px,5vw,49px);line-height:1.04;letter-spacing:-.065em;margin:15px 0}
+.auth-card label{color:#d9dced;font-size:12px;letter-spacing:.01em}
+.auth-card input,.customer-toolbar input,.form-grid input,.form-grid textarea,.inbox-toolbar input,.inbox-toolbar select,.inbox-compose textarea{
+  background:#0c101b;border-color:#343950;color:#f4f5fb;border-radius:11px;
+}
+.auth-card input::placeholder,.customer-toolbar input::placeholder{color:#727b94}
+.auth-card input:focus,.customer-toolbar input:focus,.form-grid input:focus,.form-grid textarea:focus,.inbox-toolbar input:focus,.inbox-toolbar select:focus,.inbox-compose textarea:focus{border-color:#8d82ff;box-shadow:0 0 0 3px rgba(130,117,255,.13);outline:none}
+.setup-note{background:#101522;border-color:#30364b}
+.error,.error-card{background:rgba(110,32,53,.22);border:1px solid rgba(255,130,157,.24);color:#ffb2c0}
+.success{background:rgba(22,106,78,.2);border:1px solid rgba(105,227,180,.22);color:#8ce8c2}
+.customer-list,.inbox-list{background:rgba(10,13,23,.46)}
+.customer-row,.conversation-row{border-radius:11px;border-bottom-color:#292e41}
+.customer-row:hover,.customer-row.selected,.conversation-row:hover,.conversation-row.selected{background:#1a1e30}
+.customer-row strong,.conversation-row strong{color:#f0f1fa}
+.customer-stats>div,.detail-panel{background:rgba(12,15,26,.45);border-color:#2d3348;border-radius:13px}
+.detail-panel h3{font-weight:750}
+.timeline-row{border-top-color:#292e41}
+.message{background:#171b2b;border-color:#30364b}
+.message.outbound{background:rgba(95,83,204,.19);border-color:rgba(153,143,255,.27)}
+.inbox-compose,.inbox-footer{border-color:#292e41}
+.qr-box{box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}
+@media(max-width:900px){
+ .app-shell{grid-template-columns:1fr}
+ .sidebar{padding:19px 20px 14px;background:rgba(10,12,21,.96)}
+ .sidebar .brand{margin-bottom:2px}
+ .sidebar nav{gap:5px;padding-bottom:2px}
+ .sidebar nav a{white-space:nowrap;min-height:39px}
+ .workspace{padding:24px 20px}
+ .workspace-head{align-items:flex-start}
+ .channel-grid{gap:12px}
+}
+@media(max-width:620px){
+ .shell{padding:18px}
+ .top{align-items:center}
+ .top .pill{font-size:10px;padding:6px 9px}
+ .hero{padding:56px 0 46px}
+ .hero h1{font-size:clamp(43px,12vw,61px);letter-spacing:-.07em}
+ .hero p{font-size:17px}
+ .grid,.channel-grid{grid-template-columns:1fr}
+ .grid .card{min-height:0}
+ .workspace{padding:20px 15px}
+ .workspace-head h1{font-size:33px}
+ .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .metric.card{padding:16px;min-height:105px}
+ .metric strong{font-size:29px}
+ .channel-card{min-height:160px}
+ .section{margin-top:30px}
+ .step-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+ .progress-card{padding:18px}
+ .auth-card{padding:24px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
