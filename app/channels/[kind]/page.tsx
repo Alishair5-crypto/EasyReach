@@ -4,7 +4,7 @@ import WhatsAppSetup from "./whatsapp-setup";
 
 const names: Record<string, string> = {
   website: "Website", whatsapp_meta: "WhatsApp Business (Meta)", whatsapp_evolution: "WhatsApp QR",
-  shopify: "Shopify", woocommerce: "WooCommerce", instagram: "Instagram", facebook: "Facebook",
+  shopify: "Shopify", woocommerce: "WooCommerce", instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok",
   email: "Email", google_sheets: "Google Sheets", crm: "CRM", pos: "POS", custom_api: "Custom API",
 };
 const whatsappKinds = ["whatsapp_meta", "whatsapp_evolution"];
