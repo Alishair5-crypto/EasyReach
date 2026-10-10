@@ -61,7 +61,7 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).toContain('url.searchParams.get("hub.verify_token")');
     expect(webhook).toContain('url.searchParams.get("hub.challenge")');
     expect(webhook).toContain('process.env.META_WEBHOOK_VERIFY_TOKEN');
-    expect(webhook).toContain('timingSafeEqualHex(sha256(expected),sha256(supplied))');
+    expect(webhook).toContain('timingSafeEqualHex(sha256(configured),sha256(token))');
     expect(webhook).toContain('new Response(challenge');
   });
 });
