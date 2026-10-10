@@ -26,7 +26,7 @@ export default async function ProductsPage() {
     <main className="app-shell">
       <aside className="sidebar">
         <a className="brand" href="/">EasyReach</a><div className="tenant-name">{tenant.name}</div>
-        <nav><a href="/dashboard">Overview</a><a href="/agent">AI Agent</a><a href="/channels">Channels</a><a href="/inbox">Shared Inbox</a><a href="/customers">Customers</a><a className="active" href="/products">Products</a><a href="/orders">Orders</a><a href="/settings">Settings</a></nav>
+        <nav><a href="/dashboard">Overview</a><a href="/agent">AI Agent</a><a href="/channels">Channels</a><a href="/inbox">Shared Inbox</a><a href="/customers">Customers</a><a className="active" href="/products">Products</a><a href="/orders">Orders</a><a href="/analytics">Analytics</a><a href="/settings">Settings</a></nav>
         <div className="sidebar-bottom"><span>{user.email}</span><span>{membership?.role}</span></div>
       </aside>
       <section className="workspace">
