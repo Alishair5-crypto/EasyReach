@@ -25,7 +25,7 @@ export default async function SettingsPage() {
         <div className="tenant-name">{tenant.name}</div>
         <nav>
           <a href="/dashboard">Overview</a><a href="/agent">AI Agent</a><a href="/channels">Channels</a>
-          <a href="/inbox">Shared Inbox</a><a href="/customers">Customers</a><a href="/products">Products</a><a href="/orders">Orders</a>
+          <a href="/inbox">Shared Inbox</a><a href="/customers">Customers</a><a href="/products">Products</a><a href="/orders">Orders</a><a href="/analytics">Analytics</a>
           <a className="active" href="/settings">Settings</a>
         </nav>
         <div className="sidebar-bottom"><span>{user.email}</span><span>{membership?.role}</span></div>
