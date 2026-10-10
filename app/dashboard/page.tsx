@@ -1,5 +1,5 @@
 import{redirect}from"next/navigation";import{getTenantContext}from"@/lib/auth";
-const channels:Array<[string,string]>=[["website","Website"],["whatsapp_meta","WhatsApp"],["whatsapp_evolution","WhatsApp QR"],["shopify","Shopify"],["woocommerce","WooCommerce"],["instagram","Instagram"],["facebook","Facebook"],["email","Email"],["google_sheets","Google Sheets"],["crm","CRM"],["pos","POS"],["custom_api","Custom API"]];
+const channels:Array<[string,string]>=[["website","Website"],["whatsapp_meta","WhatsApp"],["whatsapp_evolution","WhatsApp QR"],["shopify","Shopify"],["woocommerce","WooCommerce"],["instagram","Instagram"],["facebook","Facebook"],["tiktok","TikTok"],["email","Email"],["google_sheets","Google Sheets"],["crm","CRM"],["pos","POS"],["custom_api","Custom API"]];
 const steps=["Create business","Create AI agent","Connect business","Add business data","Set sales rules","Test agent","Activate"];
 type Integration={kind:string;status:string;display_name:string|null;last_sync_at:string|null;error_message:string|null};
 type CountResult={count:number|null};
