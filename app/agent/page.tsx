@@ -23,6 +23,7 @@ export default async function AgentPage() {
           <a href="/channels">Channels</a>
           <a href="/inbox">Shared Inbox</a>
           <a href="/customers">Customers</a>
+          <a href="/products">Products</a>
           <a href="/orders">Orders</a>
           <a href="/settings">Settings</a>
         </nav>
