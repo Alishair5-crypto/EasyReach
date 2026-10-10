@@ -1,5 +1,124 @@
-import {NextResponse} from "next/server";
-import {getTenantContext} from "@/lib/auth";
-const statuses=["open","pending","closed"];const priorities=["low","normal","high","urgent"];
-export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){try{const {supabase,tenant}=await getTenantContext();if(!tenant)return NextResponse.json({error:"workspace_required"},{status:400});const {id}=await params;const {data:c,error}=await supabase.from("conversations").select("id,customer_id,channel,external_id,status,priority,assigned_to,handoff,last_message_at,created_at").eq("tenant_id",tenant.id).eq("id",id).maybeSingle();if(error)throw error;if(!c)return NextResponse.json({error:"conversation_not_found"},{status:404});const [{data:customer},{data:messages},{data:members}]=await Promise.all([c.customer_id?supabase.from("customers").select("*").eq("tenant_id",tenant.id).eq("id",c.customer_id).maybeSingle():Promise.resolve({data:null}),supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at").eq("tenant_id",tenant.id).eq("conversation_id",id).order("created_at",{ascending:false}).limit(200),supabase.from("tenant_members").select("user_id,role").eq("tenant_id",tenant.id)]);return NextResponse.json({conversation:{...c,customer:customer??null,messages:(messages??[]).reverse(),members:members??[]}})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"conversation_fetch_failed"},{status:500})}}
-export async function PATCH(req:Request,{params}:{params:Promise<{id:string}>}){try{const {supabase,tenant,user,membership}=await getTenantContext();if(!tenant||!user||!membership)return NextResponse.json({error:"workspace_required"},{status:400});if(!["owner","admin","manager","sales","support"].includes(membership.role))return NextResponse.json({error:"not_authorized"},{status:403});const {id}=await params;const {data:before}=await supabase.from("conversations").select("*").eq("tenant_id",tenant.id).eq("id",id).maybeSingle();if(!before)return NextResponse.json({error:"conversation_not_found"},{status:404});const body=await req.json();const patch:Record<string,unknown>={};if(body.status!==undefined){if(!statuses.includes(body.status))return NextResponse.json({error:"invalid_status"},{status:400});patch.status=body.status}if(body.priority!==undefined){if(!priorities.includes(body.priority))return NextResponse.json({error:"invalid_priority"},{status:400});patch.priority=body.priority}if(body.handoff!==undefined){if(typeof body.handoff!=="boolean")return NextResponse.json({error:"invalid_handoff"},{status:400});patch.handoff=body.handoff}if(body.assigned_to!==undefined){if(body.assigned_to!==null&&typeof body.assigned_to!=="string")return NextResponse.json({error:"invalid_assignee"},{status:400});if(body.assigned_to!==null){const {data:m}=await supabase.from("tenant_members").select("user_id").eq("tenant_id",tenant.id).eq("user_id",body.assigned_to).maybeSingle();if(!m)return NextResponse.json({error:"invalid_assignee"},{status:400})}patch.assigned_to=body.assigned_to}if(!Object.keys(patch).length)return NextResponse.json({error:"no_changes"},{status:400});const {data:updated,error}=await supabase.from("conversations").update(patch).eq("tenant_id",tenant.id).eq("id",id).select("*").single();if(error)throw error;const {error:auditError}=await supabase.from("audit_logs").insert({tenant_id:tenant.id,actor_id:user.id,action:"conversation_updated",resource_type:"conversation",resource_id:id,old_data:before,new_data:updated,reason:"Shared Inbox update"});if(auditError)throw auditError;return NextResponse.json({conversation:updated})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"conversation_update_failed"},{status:500})}}
+import { NextResponse } from "next/server";
+import { getTenantContext } from "@/lib/auth";
+
+const statuses = ["open", "pending", "closed"] as const;
+const priorities = ["low", "normal", "high", "urgent"] as const;
+const editableRoles = ["owner", "admin", "manager", "sales", "support"] as const;
+type ConversationPatch = {
+  status?: (typeof statuses)[number];
+  priority?: (typeof priorities)[number];
+  handoff?: boolean;
+  assigned_to?: string | null;
+};
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parsePatch(body: JsonRecord): ConversationPatch | null {
+  const allowed = new Set(["status", "priority", "handoff", "assigned_to"]);
+  if (Object.keys(body).some((key) => !allowed.has(key))) return null;
+  const patch: ConversationPatch = {};
+
+  if ("status" in body) {
+    if (typeof body.status !== "string" || !statuses.includes(body.status as (typeof statuses)[number])) return null;
+    patch.status = body.status as (typeof statuses)[number];
+  }
+  if ("priority" in body) {
+    if (typeof body.priority !== "string" || !priorities.includes(body.priority as (typeof priorities)[number])) return null;
+    patch.priority = body.priority as (typeof priorities)[number];
+  }
+  if ("handoff" in body) {
+    if (typeof body.handoff !== "boolean") return null;
+    patch.handoff = body.handoff;
+  }
+  if ("assigned_to" in body) {
+    if (body.assigned_to !== null &&
+      (typeof body.assigned_to !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.assigned_to))) {
+      return null;
+    }
+    patch.assigned_to = body.assigned_to as string | null;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
+function updateErrorResponse(message: string) {
+  if (message.includes("conversation_not_found")) return NextResponse.json({ error: "conversation_not_found" }, { status: 404 });
+  if (message.includes("not_authorized")) return NextResponse.json({ error: "not_authorized" }, { status: 403 });
+  if (message.includes("invalid_assignee")) return NextResponse.json({ error: "invalid_assignee" }, { status: 400 });
+  if (message.includes("invalid_status")) return NextResponse.json({ error: "invalid_status" }, { status: 400 });
+  if (message.includes("invalid_priority")) return NextResponse.json({ error: "invalid_priority" }, { status: 400 });
+  if (message.includes("invalid_handoff")) return NextResponse.json({ error: "invalid_handoff" }, { status: 400 });
+  return NextResponse.json({ error: "conversation_update_failed" }, { status: 500 });
+}
+
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { supabase, tenant } = await getTenantContext();
+    if (!tenant) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+
+    const { id } = await params;
+    const { data: conversation, error } = await supabase
+      .from("conversations")
+      .select("id,customer_id,channel,external_id,status,priority,assigned_to,handoff,last_message_at,created_at")
+      .eq("tenant_id", tenant.id)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!conversation) return NextResponse.json({ error: "conversation_not_found" }, { status: 404 });
+
+    const [{ data: customer, error: customerError }, { data: messages, error: messagesError }, { data: members, error: membersError }] =
+      await Promise.all([
+        conversation.customer_id
+          ? supabase.from("customers").select("*").eq("tenant_id", tenant.id).eq("id", conversation.customer_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at")
+          .eq("tenant_id", tenant.id).eq("conversation_id", id).order("created_at", { ascending: false }).limit(200),
+        supabase.from("tenant_members").select("user_id,role").eq("tenant_id", tenant.id),
+      ]);
+    if (customerError || messagesError || membersError) throw new Error("conversation_detail_query_failed");
+
+    return NextResponse.json({
+      conversation: {
+        ...conversation,
+        customer: customer ?? null,
+        messages: (messages ?? []).reverse(),
+        members: members ?? [],
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "conversation_fetch_failed" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { supabase, tenant, user, membership } = await getTenantContext();
+    if (!tenant || !user || !membership) {
+      return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+    }
+    if (!(editableRoles as readonly string[]).includes(membership.role)) {
+      return NextResponse.json({ error: "not_authorized" }, { status: 403 });
+    }
+
+    const body: unknown = await req.json().catch(() => null);
+    if (!isRecord(body)) return NextResponse.json({ error: "invalid_request_body" }, { status: 400 });
+    const patch = parsePatch(body);
+    if (!patch) return NextResponse.json({ error: "invalid_conversation_patch" }, { status: 400 });
+
+    const { id } = await params;
+    const { data, error } = await supabase.rpc("update_conversation_atomic", {
+      p_tenant_id: tenant.id,
+      p_conversation_id: id,
+      p_patch: patch,
+    });
+    if (error) return updateErrorResponse(error.message);
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return NextResponse.json({ error: "conversation_update_failed" }, { status: 500 });
+    }
+    return NextResponse.json({ conversation: data });
+  } catch {
+    return NextResponse.json({ error: "conversation_update_failed" }, { status: 500 });
+  }
+}
