@@ -347,3 +347,17 @@ a{transition:color .18s ease,background .18s ease,border-color .18s ease,transfo
 .settings-signout{margin-top:18px}
 .settings-signout .error{margin-top:10px}
 @media(max-width:760px){.settings-grid{grid-template-columns:1fr}.settings-panel{padding:19px}.settings-metrics strong{font-size:21px}}
+
+
+/* Product catalog review. */
+.products-empty{display:grid;justify-items:start;gap:10px;max-width:720px;padding:32px}
+.products-empty h2{margin:4px 0;font-size:24px;letter-spacing:-.05em}
+.products-empty p{max-width:560px;font-size:13px;line-height:1.8}
+.products-empty-icon{display:grid;place-items:center;width:43px;height:43px;border:1px solid #4d477e;border-radius:14px;background:#201e39;color:#bdb5ff;font-size:22px}
+.products-metrics{margin-bottom:17px}
+.products-table-card{padding:20px}
+.products-table-card .section-head{align-items:flex-start}
+.products-table-card .section-head h2{margin:0;font-size:17px}
+.products-table-card .section-head p{margin:7px 0 0;font-size:12px}
+.product-description{display:block;max-width:360px;margin-top:5px;color:#8993ac;font-size:10px;line-height:1.5;white-space:normal}
+@media(max-width:620px){.products-empty{padding:22px}.products-table-card{padding:14px}}
