@@ -35,7 +35,7 @@ begin
   if p_patch ? 'notes' and jsonb_typeof(p_patch->'notes') not in ('string','null') then raise exception 'invalid_notes'; end if;
   if p_patch ? 'tags' and (
     jsonb_typeof(p_patch->'tags') <> 'array'
-    or exists (select 1 from jsonb_array_elements(p_patch->'tags') tag where jsonb_typeof(tag) <> 'string')
+    or exists (select 1 from jsonb_array_elements(p_patch->'tags') as tag(value) where jsonb_typeof(tag.value) <> 'string')
   ) then raise exception 'invalid_tags'; end if;
   if p_patch ? 'consent' and jsonb_typeof(p_patch->'consent') <> 'object' then raise exception 'invalid_consent'; end if;
 
