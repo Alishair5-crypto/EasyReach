@@ -117,3 +117,11 @@ The active workspace cookie is `HttpOnly`, `SameSite=Strict`, scoped to `/`, and
 - Added regression contracts to check the privilege migration and ensure these application routes do not insert audit rows using the user-scoped Supabase client.
 - **Limit:** customer and provider integration state updates are not yet transactionally coupled to their audit insert. A failed audit write can still leave a successful mutation without its corresponding audit event. This phase reduces client-side log forgery but does not constitute full tamper-proof or append-only audit certification.
 - **Release gate:** migration has not been applied to production. Validate it on a disposable Supabase database, verify existing RLS/policies and privileged insert behavior, then run live authorization tests before promotion.
+
+
+### ER-010 follow-up — atomic Customer 360 mutation
+
+- Added `20261010130000_atomic_customer_updates.sql`. The `update_customer_atomic` SECURITY DEFINER RPC checks the authenticated user’s membership and approved role, validates the patch shape, locks the tenant-scoped customer row, applies only approved fields, and inserts the audit event in the same transaction.
+- Revoked direct `UPDATE` on `customers` from anon/authenticated clients so the audited profile update path cannot be bypassed through ordinary PostgREST UPDATE.
+- `PATCH /api/customers/[id]` now calls the RPC instead of performing a separate customer UPDATE followed by an audit INSERT.
+- **Validation boundary:** source-contract tests and CI can verify the API contract and TypeScript build, but the SQL function has not yet been executed against a disposable Supabase database. Verify column-type compatibility (especially `tags` and `consent`), RLS/grants, role denial, and audit rollback before applying it to production.
