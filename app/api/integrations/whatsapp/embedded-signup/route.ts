@@ -112,19 +112,12 @@ export async function POST(req: Request) {
 
     await subscribeMetaWaba(secret);
 
-    const now = new Date().toISOString();
-    const { error: statusError } = await supabase.from("integrations").update({
-      status: "connected",
-      last_sync_at: now,
-      error_message: null,
-      updated_at: now,
-    }).eq("id", integrationId).eq("tenant_id", tenant.id);
-    if (statusError) throw new Error("meta_embedded_signup_status_save_failed");
-
+    // Record successful provider verification before marking the integration connected.
+    // If audit persistence fails, the integration remains in "preparing" and can be retried.
     const { error: auditError } = await admin.from("audit_logs").insert({
       tenant_id: tenant.id,
       actor_id: user.id,
-      action: "integration.whatsapp.embedded_signup_connected",
+      action: "integration.whatsapp.embedded_signup_verified",
       resource_type: "integration",
       resource_id: integrationId,
       new_data: {
@@ -134,6 +127,15 @@ export async function POST(req: Request) {
       },
     });
     if (auditError) throw new Error("meta_embedded_signup_audit_failed");
+
+    const now = new Date().toISOString();
+    const { error: statusError } = await supabase.from("integrations").update({
+      status: "connected",
+      last_sync_at: now,
+      error_message: null,
+      updated_at: now,
+    }).eq("id", integrationId).eq("tenant_id", tenant.id);
+    if (statusError) throw new Error("meta_embedded_signup_status_save_failed");
 
     return NextResponse.json({
       integrationId,
