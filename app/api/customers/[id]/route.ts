@@ -1,5 +1,6 @@
 import {NextResponse} from "next/server";
 import {getTenantContext} from "@/lib/auth";
+import {createPrivilegedClient} from "@/lib/integrations/server";
 
 type Ctx={params:Promise<{id:string}>};
 const editable=["name","phone","email","preferred_language","consent","tags","notes"] as const;
@@ -54,7 +55,8 @@ export async function PATCH(req:Request,{params}:Ctx){
     patch.updated_at=new Date().toISOString();
     const {data:customer,error}=await supabase.from("customers").update(patch).eq("tenant_id",tenant.id).eq("id",id).select("id,external_key,name,phone,email,preferred_language,consent,tags,notes,last_seen_at,created_at,updated_at").single();
     if(error)throw error;
-    const {error:auditError}=await supabase.from("audit_logs").insert({tenant_id:tenant.id,actor_id:user.id,action:"customer.updated",resource_type:"customer",resource_id:id,old_data:before,new_data:customer,reason:"Customer 360 profile update"});
+    const auditClient=createPrivilegedClient();
+    const {error:auditError}=await auditClient.from("audit_logs").insert({tenant_id:tenant.id,actor_id:user.id,action:"customer.updated",resource_type:"customer",resource_id:id,old_data:before,new_data:customer,reason:"Customer 360 profile update"});
     if(auditError)throw auditError;
     return NextResponse.json({customer});
   }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"customer_update_failed"},{status:500});}
