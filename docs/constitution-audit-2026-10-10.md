@@ -79,3 +79,14 @@ Non-negotiables checked: no fake integration state; server-derived tenant; RLS p
 - **Still unverified:** the new SQL RPC has not been run against a disposable Supabase database. Its tenant checks and atomic audit behavior are currently supported by code inspection and source-contract tests only. Live RLS/role-denial behavior, provider delivery, and browser E2E remain open.
 - Conversation detail now checks the approved role allowlist and selects only the customer fields required by the inbox UI. Outbound WhatsApp payload validation was tightened, but provider-send versus database-persistence failure recovery remains open.
 - **Release gate unchanged:** ACTIVE / NOT SIGNED OFF; NO MERGE / NO PRODUCTION DEPLOY.
+
+
+## Addendum — Explicit active workspace selection (ER-011 implementation, 2026-10-10)
+
+| ID | Severity | Finding / implementation | Verification status |
+|---|---|---|---|
+| ER-011 | **High** | `getTenantContext()` previously chose the earliest membership silently. It now uses a server-only HttpOnly active-workspace cookie, auto-selects only when exactly one membership exists, and refuses to resolve a tenant when multiple memberships exist without a valid selection. New workspace listing/selection endpoints verify membership against the authenticated user; the selection UI does not trust client-supplied tenant IDs. | Code and contract tests staged; CI and typecheck must pass before this phase can be considered verified. |
+
+The active workspace cookie is `HttpOnly`, `SameSite=Strict`, scoped to `/`, and marked `Secure` in production. Every workspace selection is checked against `tenant_members` before setting it. The onboarding route directs users with multiple memberships to the explicit selector rather than treating them as new customers.
+
+**Open verification:** all page-level redirects for missing tenant context must be reviewed for multi-workspace UX; live RLS and cross-tenant authorization tests remain required. No production DB change or deployment is made by this change. Release status remains ACTIVE / NOT SIGNED OFF.
