@@ -37,9 +37,10 @@ export async function PATCH(req:Request,{params}:Ctx){
     if(!tenant||!user||!membership)return NextResponse.json({error:"workspace_required"},{status:400});
     if(!["owner","admin","manager","sales","support"].includes(membership.role))return NextResponse.json({error:"not_authorized"},{status:403});
     const {id}=await params;
-    const body=await req.json();
+    const body:unknown=await req.json().catch(()=>null);
+    if(typeof body!=="object"||body===null||Array.isArray(body))return NextResponse.json({error:"invalid_request_body"},{status:400});
     const patch:Record<string,unknown>={};
-    for(const key of editable)if(Object.prototype.hasOwnProperty.call(body,key))patch[key]=body[key];
+    for(const key of editable)if(Object.prototype.hasOwnProperty.call(body,key))patch[key]=(body as Record<string,unknown>)[key];
     if(!Object.keys(patch).length)return NextResponse.json({error:"no_editable_fields"},{status:400});
     if("name" in patch&&patch.name!==null&&typeof patch.name!=="string")return NextResponse.json({error:"invalid_name"},{status:400});
     if("phone" in patch&&patch.phone!==null&&typeof patch.phone!=="string")return NextResponse.json({error:"invalid_phone"},{status:400});
@@ -53,7 +54,11 @@ export async function PATCH(req:Request,{params}:Ctx){
       p_customer_id:id,
       p_patch:patch,
     });
-    if(error)throw error;
+    if(error){
+      const known:Record<string,number>={not_authorized:403,customer_not_found:404,invalid_customer_patch:400,invalid_name:400,invalid_phone:400,invalid_email:400,invalid_language:400,invalid_tags:400,invalid_notes:400,invalid_consent:400};
+      const key=Object.keys(known).find(value=>error.message.includes(value));
+      return NextResponse.json({error:key??"customer_update_failed"},{status:key?known[key]:500});
+    }
     if(!customer||typeof customer!=="object"||Array.isArray(customer))return NextResponse.json({error:"customer_update_failed"},{status:500});
     return NextResponse.json({customer});
   }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"customer_update_failed"},{status:500});}
