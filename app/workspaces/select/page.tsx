@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth";
 import WorkspaceSelector from "./workspace-selector";
 
-export default async function WorkspaceSelectionPage() {
+export default async function WorkspaceSelectionPage({ searchParams }: { searchParams: Promise<{ switch?: string }> }) {
   const { user, tenant, memberships } = await getTenantContext();
-  if (tenant) redirect("/dashboard");
+  const params = await searchParams;
+  if (tenant && params.switch !== "1") redirect("/dashboard");
   if (!memberships || memberships.length === 0) redirect("/onboarding");
   return (
     <main className="auth-shell">
