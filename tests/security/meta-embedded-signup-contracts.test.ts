@@ -16,8 +16,8 @@ describe("Meta embedded signup persistence contracts", () => {
   });
 
   it("fails closed when webhook signature verification secrets are not configured", () => {
-    expect(route).toContain('process.env.META_WEBHOOK_VERIFY_TOKEN');
-    expect(route).toContain('process.env.META_APP_SECRET');
+    expect(route).toContain("process.env.META_WEBHOOK_VERIFY_TOKEN");
+    expect(route).toContain("process.env.META_APP_SECRET");
     expect(route).toContain('error: "meta_webhook_not_configured"');
   });
 
@@ -33,9 +33,13 @@ describe("Meta embedded signup persistence contracts", () => {
     expect(route).toContain("meta_embedded_signup_secret_save_failed");
   });
 
-  it("does not report connected when status persistence or audit insertion fails", () => {
-    expect(route).toContain("if (statusError) throw new Error");
+  it("records verification audit before transitioning the integration to connected", () => {
+    const auditIndex = route.indexOf('action: "integration.whatsapp.embedded_signup_verified"');
+    const connectedIndex = route.indexOf('status: "connected"');
+    expect(auditIndex).toBeGreaterThan(-1);
+    expect(connectedIndex).toBeGreaterThan(auditIndex);
     expect(route).toContain("if (auditError) throw new Error");
+    expect(route).toContain("if (statusError) throw new Error");
     expect(route).toContain("meta_embedded_signup_status_save_failed");
     expect(route).toContain("meta_embedded_signup_audit_failed");
   });
