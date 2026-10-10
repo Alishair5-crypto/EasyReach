@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTenantContext } from "@/lib/auth";
-import { getIntegrationSecret } from "@/lib/integrations/server";
+import { createPrivilegedClient, getIntegrationSecret } from "@/lib/integrations/server";
 import { getEvolutionStatus, normalizeEvolutionConnectionState, verifyMetaCredentials } from "@/lib/integrations/whatsapp";
 
 export const runtime = "nodejs";
@@ -62,7 +62,8 @@ export async function POST(req: Request) {
     }).eq("id", integration.id).eq("tenant_id", tenant.id);
     if (updateError) throw updateError;
 
-    const { error: auditError } = await supabase.from("audit_logs").insert({
+    const auditClient = createPrivilegedClient();
+    const { error: auditError } = await auditClient.from("audit_logs").insert({
       tenant_id: tenant.id,
       actor_id: user.id,
       action: "integration.whatsapp.status_checked",
