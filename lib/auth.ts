@@ -5,7 +5,7 @@ import { createClient } from "./supabase/server";
 export const ACTIVE_WORKSPACE_COOKIE = "easyreach_active_workspace_id";
 
 type Membership = { tenant_id: string; role: string };
-type Tenant = { id: string; name: string; [key: string]: unknown };
+type Tenant = { id: string; name: string; onboarding_step: number; [key: string]: unknown };
 
 export async function getUser() {
   const supabase = await createClient();
