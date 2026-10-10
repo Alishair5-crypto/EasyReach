@@ -24,7 +24,7 @@ describe("conversation mutation and history security contracts", () => {
   });
 
   it("restricts conversation reads to approved roles and returns only required customer fields", () => {
-    expect(conversationRoute).toContain("const readableRoles = [\"owner\", \"admin\", \"manager\", \"sales\", \"support\"] as const");
+    expect(conversationRoute).toContain("const readableRoles = editableRoles");
     expect(conversationRoute).toContain('.select("id,name,phone,email,preferred_language,tags")');
   });
 
