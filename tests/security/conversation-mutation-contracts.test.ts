@@ -8,6 +8,12 @@ const atomicMigration = read("supabase/migrations/20261010110000_atomic_conversa
 const messageRoute = read("app/api/conversations/[id]/messages/route.ts");
 
 describe("conversation mutation and history security contracts", () => {
+  it("rejects malformed conversation identifiers before database access", () => {
+    expect(conversationRoute).toContain("function validConversationId(id: string): boolean");
+    expect(conversationRoute).toContain('error: "invalid_conversation_id"');
+    expect(conversationRoute).toContain("if (!validConversationId(id))");
+  });
+
   it("rejects malformed and unknown conversation patch fields before database mutation", () => {
     expect(conversationRoute).toContain('error: "invalid_request_body"');
     expect(conversationRoute).toContain('error: "invalid_conversation_patch"');
