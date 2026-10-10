@@ -70,3 +70,12 @@ Non-negotiables checked: no fake integration state; server-derived tenant; RLS p
 - The new database function has not yet been executed against a disposable Supabase database. Static source-contract tests do not prove SQL runtime behavior, RLS enforcement or live role-denial behavior.
 - The existing generic audit-log INSERT spoofing risk remains open. This change makes this specific conversation mutation and its audit event atomic, but does not close overall audit integrity.
 - **Release gate unchanged:** NO MERGE / NO PRODUCTION DEPLOY until all mandatory security, database, provider and end-to-end checks pass.
+
+
+### Follow-up verification — conversation mutation phase
+
+- **Passed:** GitHub Actions [38022678426](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38022678426), commit `f59eb3c6bc62d99ea87eaf297973ad2306fadad4`: dependency installation, security regression tests, TypeScript type-check, and Next.js production build passed.
+- An earlier run failed because a source-contract assertion expected the role array to be declared inline; the typed allowlist was preserved and the assertion was corrected. The final code commit's full workflow passed.
+- **Still unverified:** the new SQL RPC has not been run against a disposable Supabase database. Its tenant checks and atomic audit behavior are currently supported by code inspection and source-contract tests only. Live RLS/role-denial behavior, provider delivery, and browser E2E remain open.
+- Conversation detail now checks the approved role allowlist and selects only the customer fields required by the inbox UI. Outbound WhatsApp payload validation was tightened, but provider-send versus database-persistence failure recovery remains open.
+- **Release gate unchanged:** ACTIVE / NOT SIGNED OFF; NO MERGE / NO PRODUCTION DEPLOY.
