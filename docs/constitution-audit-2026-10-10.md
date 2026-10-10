@@ -41,3 +41,16 @@ Non-negotiables checked: no fake integration state; server-derived tenant; RLS p
 - **CI passed (code-level only):** Evolution state normalization + tests; Evolution webhook registration + redacted receipts + stale lease recovery; SSRF filtering/redirect rejection; role guards for AI chat/customer/conversation/order APIs; order API idempotency/RPC signature fix; staged SQL hardening, atomic order audit, confirmation payload hashing + static contract tests.
 - **Unverified:** live Evolution QR/webhook delivery, live Meta GET/POST handshake, two-tenant RLS attack tests, real role-denial tests, audit tamper tests, SQL migration execution on a disposable database, browser E2E, and production smoke tests. The generic authenticated audit-log INSERT policy remains a spoofing risk; audit integrity is not signed off.
 - **Release gate:** NO MERGE / NO PRODUCTION DEPLOY until the migration is validated off-production, latest CI and build pass, high/critical findings are closed, role/tenant/audit tests pass, and provider/browser smoke tests are recorded.
+
+## Addendum — Shared Inbox reliability layer (2026-10-10)
+
+| ID | Severity | Finding / evidence | Disposition |
+|---|---|---|---|
+| ER-019 | **Medium** | Shared Inbox did not explicitly acknowledge unread inbound messages when an agent opened a conversation, so unread badges could remain stale until another refresh or provider update. | **Code + contract test added** on `test/security-regression-suite`: opening a conversation POSTs to a tenant-scoped read endpoint; endpoint checks the authenticated tenant and role, verifies conversation ownership in that tenant, and only marks unread inbound messages for that conversation as read. The UI clears that conversation's unread count only when the endpoint succeeds. |
+
+### Shared Inbox verification
+
+- **Passed:** GitHub Actions run [38019533143](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38019533143), commit `388be78301c4d1dd2ed8a67d40974f6b58b66144`: dependency installation, security regression tests (including the new inbox read-state contract), TypeScript type-check, and Next.js production build all succeeded.
+- **Passed:** Inbox assignment/channel-filter UI and TikTok filter follow-up runs [38018389857](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38018389857), [38018407391](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38018407391), and [38018412782](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38018412782) all completed successfully.
+- **Scope limit:** The inbox read-state test is a source/contract regression test, not a live multi-tenant database test. Real RLS enforcement, concurrent unread-count behavior, browser interaction, and live message-provider flows remain unverified. This does not close ER-010 audit integrity concerns or any critical release blocker.
+- **Release decision unchanged:** NO MERGE / NO PRODUCTION DEPLOY until the critical/high security and audit findings, off-production migration execution, live provider checks, and end-to-end tenant/role tests are resolved and documented.
