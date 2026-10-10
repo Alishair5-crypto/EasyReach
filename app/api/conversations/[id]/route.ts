@@ -3,8 +3,8 @@ import { getTenantContext } from "@/lib/auth";
 
 const statuses = ["open", "pending", "closed"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
-const readableRoles = ["owner", "admin", "manager", "sales", "support"] as const;
-const editableRoles = readableRoles;
+const editableRoles = ["owner", "admin", "manager", "sales", "support"] as const;
+const readableRoles = editableRoles;
 type ConversationPatch = {
   status?: (typeof statuses)[number];
   priority?: (typeof priorities)[number];
