@@ -9,9 +9,12 @@ export async function GET(req:Request){
     if(!tenant)return NextResponse.json({error:"workspace_required"},{status:400});
     const url=new URL(req.url);
     const q=cleanQuery(url.searchParams.get("q")??"");
-    const limit=Math.min(50,Math.max(1,Number(url.searchParams.get("limit")??25)||25));
+    const requestedId=(url.searchParams.get("id")??"").trim();
+    if(requestedId&&!/^[0-9a-f-]{36}$/i.test(requestedId))return NextResponse.json({error:"invalid_customer_id"},{status:400});
+    const limit=requestedId?1:Math.min(50,Math.max(1,Number(url.searchParams.get("limit")??25)||25));
     let query=supabase.from("customers").select("id,external_key,name,phone,email,preferred_language,consent,tags,notes,last_seen_at,created_at,updated_at").eq("tenant_id",tenant.id).order("last_seen_at",{ascending:false,nullsFirst:false}).order("created_at",{ascending:false}).limit(limit);
-    if(q)query=query.or("name.ilike.%"+q+"%,phone.ilike.%"+q+"%,email.ilike.%"+q+"%,external_key.ilike.%"+q+"%");
+    if(requestedId)query=query.eq("id",requestedId);
+    else if(q)query=query.or("name.ilike.%"+q+"%,phone.ilike.%"+q+"%,email.ilike.%"+q+"%,external_key.ilike.%"+q+"%");
     const {data,error}=await query;
     if(error)throw error;
     const customers=data??[];
