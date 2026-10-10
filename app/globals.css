@@ -258,3 +258,17 @@ a{transition:color .18s ease,background .18s ease,border-color .18s ease,transfo
  .landing-cta>.button{width:100%}
  .landing-footer{align-items:flex-start;flex-direction:column;gap:12px;padding-top:26px}
 }
+
+
+/* Authentication UX refinements: legible helper copy, visible links, consistent controls. */
+.auth-card form{gap:17px}
+.auth-card input{min-height:47px}
+.auth-card input::placeholder{opacity:1}
+.auth-switch{margin-top:22px;font-size:12px}
+.auth-switch a{display:inline-flex;align-items:center;gap:5px;color:#c2bbff;font-weight:750}
+.auth-switch a:hover,.landing-footer>a:last-child:hover,.top-signin:hover{color:#8be0ea}
+.field-hint{margin:-9px 0 0;color:#8993ac;font-size:11px;line-height:1.6}
+.auth-security-note{display:flex;align-items:flex-start;gap:8px;margin:20px 0 0;padding-top:16px;border-top:1px solid #292e42;color:#818ba5;font-size:10px;line-height:1.65}
+.auth-security-note span{color:#8edbc8;font-size:15px;line-height:1}
+.auth-card .error,.auth-card .success{line-height:1.6}
+@media(max-width:620px){.auth-switch{line-height:1.8}.auth-security-note{font-size:10px}}
