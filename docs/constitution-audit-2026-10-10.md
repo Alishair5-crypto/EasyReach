@@ -54,3 +54,19 @@ Non-negotiables checked: no fake integration state; server-derived tenant; RLS p
 - **Passed:** Inbox assignment/channel-filter UI and TikTok filter follow-up runs [38018389857](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38018389857), [38018407391](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38018407391), and [38018412782](https://github.com/Alishair5-crypto/EasyReach/actions/runs/38018412782) all completed successfully.
 - **Scope limit:** The inbox read-state test is a source/contract regression test, not a live multi-tenant database test. Real RLS enforcement, concurrent unread-count behavior, browser interaction, and live message-provider flows remain unverified. This does not close ER-010 audit integrity concerns or any critical release blocker.
 - **Release decision unchanged:** NO MERGE / NO PRODUCTION DEPLOY until the critical/high security and audit findings, off-production migration execution, live provider checks, and end-to-end tenant/role tests are resolved and documented.
+
+
+## Addendum — Conversation mutation and message payload reliability (2026-10-10)
+
+| ID | Severity | Finding / evidence | Disposition |
+|---|---|---|---|
+| ER-020 | **High** | Shared Inbox conversation PATCH previously committed a conversation update and then attempted to insert its audit event in a separate request. If the audit insert failed, the API returned an error after the state had already changed. | **Code + migration staged:** the API validates the patch and calls `update_conversation_atomic`; the new SECURITY DEFINER RPC validates authenticated tenant membership and role, scopes the target conversation by tenant and ID, validates assignees against tenant membership, updates the record, and writes the audit event in the same database transaction. The migration is not applied to production and still requires isolated-database execution and authorization tests. |
+| ER-021 | **Medium** | Outbound WhatsApp message parsing accepted an untyped provider response and silently truncated user input to 4,096 characters. | **Code changed:** provider message IDs are extracted from `unknown` using runtime object checks, malformed request bodies are rejected, and oversized messages receive a validation error instead of being silently truncated. Provider-send/persistence atomicity remains a separate open reliability concern. |
+
+### Verification and limitations
+
+- The initial CI runs for this change failed at the pre-existing source-contract assertion that expected an inline role array. The test was updated to match the typed allowlist; this was a test-contract mismatch, not evidence that the authorization check had been removed.
+- The workflow for the updated test commit must be checked before reporting this phase as passed.
+- The new database function has not yet been executed against a disposable Supabase database. Static source-contract tests do not prove SQL runtime behavior, RLS enforcement or live role-denial behavior.
+- The existing generic audit-log INSERT spoofing risk remains open. This change makes this specific conversation mutation and its audit event atomic, but does not close overall audit integrity.
+- **Release gate unchanged:** NO MERGE / NO PRODUCTION DEPLOY until all mandatory security, database, provider and end-to-end checks pass.
