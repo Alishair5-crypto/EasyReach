@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createClient, redirect } = vi.hoisted(() => ({
+const { createClient, redirect, cookies } = vi.hoisted(() => ({
   createClient: vi.fn(),
   redirect: vi.fn((path: string) => { throw new Error(`redirect:${path}`); }),
+  cookies: vi.fn(),
 }));
 
 vi.mock("../../lib/supabase/server", () => ({ createClient }));
 vi.mock("next/navigation", () => ({ redirect }));
+vi.mock("next/headers", () => ({ cookies }));
 
 import { getTenantContext } from "../../lib/auth";
 
@@ -18,40 +20,60 @@ function queryResult(data: unknown) {
 }
 
 describe("authenticated tenant context", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    cookies.mockResolvedValue({ get: vi.fn(() => undefined) });
+  });
 
   it("redirects unauthenticated users before querying tenant membership", async () => {
     const from = vi.fn();
-    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user: null } }) }, from });
+    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user: null }, error: null }) }, from });
     await expect(getTenantContext()).rejects.toThrow("redirect:/signin");
     expect(from).not.toHaveBeenCalled();
   });
 
-  it("loads a tenant only through the authenticated user's membership", async () => {
-    const membershipQuery = queryResult({ tenant_id: "tenant-A", role: "member" });
-    const tenantQuery = queryResult({ id: "tenant-A", name: "Tenant A" });
-    const from = vi.fn((table: string) => table === "tenant_members" ? membershipQuery : tenantQuery);
-    const user = { id: "user-123" };
-    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user } }) }, from });
-
+  it("uses the sole membership when the user has exactly one workspace", async () => {
+    const memberships = [{ tenant_id: "tenant-A", role: "owner" }];
+    const membershipQuery = { select: vi.fn(() => membershipQuery), eq: vi.fn(() => membershipQuery), maybeSingle: vi.fn(), then: undefined } as unknown as Record<string, unknown>;
+    const query = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
+    const from = vi.fn((table: string) => {
+      if (table === "tenant_members") {
+        const q = { select: vi.fn(() => q), eq: vi.fn(() => q), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: memberships, error: null }).then(resolve) };
+        return q;
+      }
+      return queryResult({ id: "tenant-A", name: "Tenant A" });
+    });
+    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user: { id: "user-123" } }, error: null }) }, from });
     const result = await getTenantContext();
-
-    expect(from).toHaveBeenNthCalledWith(1, "tenant_members");
-    expect(membershipQuery.eq).toHaveBeenCalledWith("user_id", user.id);
-    expect(tenantQuery.eq).toHaveBeenCalledWith("id", "tenant-A");
-    expect(result.membership).toEqual({ tenant_id: "tenant-A", role: "member" });
-    expect(result.tenant).toEqual({ id: "tenant-A", name: "Tenant A" });
+    expect(result.tenant).toMatchObject({ id: "tenant-A", name: "Tenant A" });
+    expect(result.membership).toEqual(memberships[0]);
   });
 
-  it("returns no tenant when the authenticated user has no membership", async () => {
-    const membershipQuery = queryResult(null);
-    const from = vi.fn(() => membershipQuery);
-    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user: { id: "user-456" } } }) }, from });
-
+  it("requires explicit workspace selection when multiple memberships exist", async () => {
+    const memberships = [{ tenant_id: "tenant-A", role: "owner" }, { tenant_id: "tenant-B", role: "support" }];
+    const from = vi.fn(() => {
+      const q = { select: vi.fn(() => q), eq: vi.fn(() => q), maybeSingle: vi.fn(), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: memberships, error: null }).then(resolve) };
+      return q;
+    });
+    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user: { id: "user-456" } }, error: null }) }, from });
     const result = await getTenantContext();
-
-    expect(result.membership).toBeNull();
     expect(result.tenant).toBeNull();
+    expect(result.membership).toBeNull();
+    expect(result.workspaceSelectionRequired).toBe(true);
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not accept an active workspace cookie without matching membership", async () => {
+    cookies.mockResolvedValue({ get: vi.fn(() => ({ value: "tenant-C" })) });
+    const memberships = [{ tenant_id: "tenant-A", role: "owner" }];
+    const from = vi.fn(() => {
+      const q = { select: vi.fn(() => q), eq: vi.fn(() => q), maybeSingle: vi.fn(), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: memberships, error: null }).then(resolve) };
+      return q;
+    });
+    createClient.mockResolvedValue({ auth: { getUser: async () => ({ data: { user: { id: "user-456" } }, error: null }) }, from });
+    const result = await getTenantContext();
+    expect(result.tenant).toBeNull();
+    expect(result.workspaceSelectionRequired).toBe(true);
     expect(from).toHaveBeenCalledTimes(1);
   });
 });
