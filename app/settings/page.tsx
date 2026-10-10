@@ -23,6 +23,7 @@ export default async function SettingsPage() {
       <aside className="sidebar">
         <a className="brand" href="/">EasyReach</a>
         <div className="tenant-name">{tenant.name}</div>
+        <a className="button secondary small" href="/workspaces/select?switch=1">Switch workspace</a>
         <nav>
           <a href="/dashboard">Overview</a><a href="/agent">AI Agent</a><a href="/channels">Channels</a>
           <a href="/inbox">Shared Inbox</a><a href="/customers">Customers</a><a href="/products">Products</a><a href="/orders">Orders</a><a href="/analytics">Analytics</a>
