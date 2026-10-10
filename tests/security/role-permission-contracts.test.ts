@@ -17,7 +17,8 @@ describe("role authorization contracts", () => {
 
   it("denies viewer role customer and conversation mutations", () => {
     expect(customer).toContain('["owner","admin","manager","sales","support"].includes(membership.role)');
-    expect(conversation).toContain('["owner","admin","manager","sales","support"].includes(membership.role)');
+    expect(conversation).toContain('const editableRoles = ["owner", "admin", "manager", "sales", "support"] as const');
+    expect(conversation).toContain('(editableRoles as readonly string[]).includes(membership.role)');
   });
 
   it("enforces role authorization inside privileged database RPCs as defense in depth", () => {
