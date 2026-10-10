@@ -3,7 +3,8 @@ import { getTenantContext } from "@/lib/auth";
 
 const statuses = ["open", "pending", "closed"] as const;
 const priorities = ["low", "normal", "high", "urgent"] as const;
-const editableRoles = ["owner", "admin", "manager", "sales", "support"] as const;
+const readableRoles = ["owner", "admin", "manager", "sales", "support"] as const;
+const editableRoles = readableRoles;
 type ConversationPatch = {
   status?: (typeof statuses)[number];
   priority?: (typeof priorities)[number];
@@ -55,8 +56,11 @@ function updateErrorResponse(message: string) {
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { supabase, tenant } = await getTenantContext();
-    if (!tenant) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+    const { supabase, tenant, membership } = await getTenantContext();
+    if (!tenant || !membership) return NextResponse.json({ error: "workspace_required" }, { status: 400 });
+    if (!(readableRoles as readonly string[]).includes(membership.role)) {
+      return NextResponse.json({ error: "not_authorized" }, { status: 403 });
+    }
 
     const { id } = await params;
     const { data: conversation, error } = await supabase
@@ -71,7 +75,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const [{ data: customer, error: customerError }, { data: messages, error: messagesError }, { data: members, error: membersError }] =
       await Promise.all([
         conversation.customer_id
-          ? supabase.from("customers").select("*").eq("tenant_id", tenant.id).eq("id", conversation.customer_id).maybeSingle()
+          ? supabase.from("customers").select("id,name,phone,email,preferred_language,tags").eq("tenant_id", tenant.id).eq("id", conversation.customer_id).maybeSingle()
           : Promise.resolve({ data: null, error: null }),
         supabase.from("messages").select("id,conversation_id,direction,sender_type,content,media,created_at,read_at")
           .eq("tenant_id", tenant.id).eq("conversation_id", id).order("created_at", { ascending: false }).limit(200),
