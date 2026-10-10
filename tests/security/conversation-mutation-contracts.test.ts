@@ -23,6 +23,11 @@ describe("conversation mutation and history security contracts", () => {
     expect(atomicMigration).toContain("to_jsonb(v_before), to_jsonb(v_after)");
   });
 
+  it("restricts conversation reads to approved roles and returns only required customer fields", () => {
+    expect(conversationRoute).toContain("const readableRoles = [\"owner\", \"admin\", \"manager\", \"sales\", \"support\"] as const");
+    expect(conversationRoute).toContain('.select("id,name,phone,email,preferred_language,tags")');
+  });
+
   it("scopes message history to both tenant and selected conversation", () => {
     expect(conversationRoute).toContain('.eq("tenant_id", tenant.id).eq("conversation_id", id)');
   });
