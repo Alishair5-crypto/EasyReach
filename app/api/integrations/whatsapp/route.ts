@@ -144,7 +144,7 @@ export async function POST(req: Request) {
     }).eq("id", integrationId).eq("tenant_id", tenant.id);
     if (statusError) throw statusError;
 
-    const { error: auditError } = await supabase.from("audit_logs").insert({
+    const { error: auditError } = await admin.from("audit_logs").insert({
       tenant_id: tenant.id,
       actor_id: user.id,
       action: "integration.whatsapp.configured",
