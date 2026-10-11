@@ -73,4 +73,12 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).toContain('requireWriteSuccess(receiptCompleteError,"webhook_receipt_completion_failed")');
   });
 
+  it("uses explicit types for resolved integrations, inbound messages, and Meta contacts", () => {
+    expect(webhook).not.toContain("integration:any");
+    expect(webhook).not.toContain("inbound:any");
+    expect(webhook).not.toContain("(x:any)");
+    expect(webhook).toContain("type Integration = NonNullable<Awaited<ReturnType<typeof findIntegration>>>");
+    expect(webhook).toContain("function isRecord(value: unknown): value is Record<string, unknown>");
+  });
+
 });
