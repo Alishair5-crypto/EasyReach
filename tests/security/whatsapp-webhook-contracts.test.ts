@@ -55,6 +55,11 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).not.toContain('payload:body,signature_verified:true');
   });
 
+  it("rejects malformed JSON and non-object payloads with client errors", () => {
+    expect(webhook).toContain('catch{return jsonResponse({error:"invalid_json"},400)}');
+    expect(webhook).toContain('if(body===null||typeof body!=="object"||Array.isArray(body))return jsonResponse({error:"invalid_payload"},400)');
+  });
+
   it("implements Meta's GET webhook verification handshake", () => {
     expect(webhook).toContain('export async function GET(req:Request)');
     expect(webhook).toContain('url.searchParams.get("hub.mode")');
