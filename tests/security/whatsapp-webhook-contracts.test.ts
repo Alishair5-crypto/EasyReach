@@ -64,4 +64,13 @@ describe("WhatsApp webhook security contracts", () => {
     expect(webhook).toContain('timingSafeEqualHex(sha256(configured),sha256(token))');
     expect(webhook).toContain('new Response(challenge');
   });
+  it("fails closed when critical inbound and receipt persistence writes fail", () => {
+    expect(webhook).toContain("function requireWriteSuccess(error: { message?: string } | null, operation: string): void");
+    expect(webhook).toContain('requireWriteSuccess(identityWriteError,"customer_identity_upsert_failed")');
+    expect(webhook).toContain('requireWriteSuccess(customerUpdateError,"customer_update_failed")');
+    expect(webhook).toContain('requireWriteSuccess(integrationUpdateError,"integration_status_update_failed")');
+    expect(webhook).toContain('requireWriteSuccess(connectionUpdateError,"integration_connection_update_failed")');
+    expect(webhook).toContain('requireWriteSuccess(receiptCompleteError,"webhook_receipt_completion_failed")');
+  });
+
 });
